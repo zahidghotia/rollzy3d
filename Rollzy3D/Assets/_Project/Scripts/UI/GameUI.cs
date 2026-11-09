@@ -758,10 +758,13 @@ namespace Rollzy
             RenderToggle(privacyRow, "Open", false);
             var policy = Row(body, "Privacy policy", () => Application.OpenURL(PrivacyPolicyUrl));
             RenderToggle(policy, "View", false);
+            var terms = Row(body, "Terms of service", () => Application.OpenURL(TermsUrl));
+            RenderToggle(terms, "View", false);
             adsNote = L(body, "", "note");
         }
 
         public const string PrivacyPolicyUrl = "https://zahidghotia.github.io/rollzy3d/privacy.html";
+        public const string TermsUrl = "https://zahidghotia.github.io/rollzy3d/terms.html";
         Label adsNote;
         Button privacyRow;
 
