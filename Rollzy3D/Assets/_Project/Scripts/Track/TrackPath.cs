@@ -182,9 +182,12 @@ namespace Rollzy
 
         public void Frame(float s, out Vector3 position, out Quaternion rotation)
         {
-            float f = Mathf.Clamp((s - sMin) / Balance.PathStep, 0, count - 1.0001f);
-            int i = (int)f;
-            float t = f - i;
+            // Index in integers: with thousands of samples, a float like count - 1.0001 rounds up to
+            // count - 1, which made i + 1 run past the end of the arrays. !(f > 0) also catches NaN.
+            float f = (s - sMin) / Balance.PathStep;
+            if (!(f > 0)) f = 0;
+            int i = f >= count - 1 ? count - 2 : (int)f;
+            float t = Mathf.Clamp01(f - i);
             position = Vector3.LerpUnclamped(positions[i], positions[i + 1], t);
             rotation = Quaternion.Slerp(rotations[i], rotations[i + 1], t);
         }

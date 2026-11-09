@@ -1,1 +1,3 @@
 @import url("unity-theme://default");
+/* Game styles ride on the theme so they always load with the PanelSettings, even if a scene reference is lost. */
+@import url("Rollzy.uss");

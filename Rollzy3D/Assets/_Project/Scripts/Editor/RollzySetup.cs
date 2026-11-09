@@ -24,8 +24,9 @@ namespace Rollzy.EditorTools
         [MenuItem("Rollzy 3D/1. Create Gameplay Scene", priority = 1)]
         public static void CreateGameplayScene()
         {
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-            if (File.Exists(ScenePath) && !EditorUtility.DisplayDialog("Rollzy 3D", "Gameplay.unity already exists. Rebuild it?", "Rebuild", "Cancel")) return;
+            bool batch = Application.isBatchMode; // dialogs auto-cancel in batch mode
+            if (!batch && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            if (File.Exists(ScenePath) && !batch && !EditorUtility.DisplayDialog("Rollzy 3D", "Gameplay.unity already exists. Rebuild it?", "Rebuild", "Cancel")) return;
             AssetDatabase.Refresh();
             EnsureFolder(MatDir);
 
@@ -57,6 +58,7 @@ namespace Rollzy.EditorTools
 
             var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(UiDir + "/Rollzy.uss");
             var theme = AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>(UiDir + "/RollzyTheme.tss");
+            Debug.Log($"[Rollzy 3D] UI styles: {(styleSheet != null ? "Rollzy.uss" : "MISSING Rollzy.uss")}, theme: {(theme != null ? "RollzyTheme.tss" : "MISSING")}");
             if (styleSheet == null || theme == null)
                 Debug.LogWarning("[Rollzy 3D] UI files not found in " + UiDir + ". Make sure the _Project/UI folder was copied in.");
             var panel = AssetDatabase.LoadAssetAtPath<PanelSettings>(UiDir + "/RollzyPanel.asset");
@@ -222,7 +224,12 @@ namespace Rollzy.EditorTools
         /// land in ProjectSettings: ROLLZY_KEYSTORE (path), ROLLZY_KEY_ALIAS, ROLLZY_KEYSTORE_PASS.
         /// Unity -batchmode -quit -projectPath . -executeMethod Rollzy.EditorTools.RollzySetup.BuildAabBatch
         /// </summary>
-        public static void BuildAabBatch()
+        public static void BuildAabBatch() => BuildSignedBatch(true);
+
+        /// <summary>Same as BuildAabBatch, but a signed APK to install straight onto a phone.</summary>
+        public static void BuildApkBatch() => BuildSignedBatch(false);
+
+        static void BuildSignedBatch(bool bundle)
         {
             string ks = Environment.GetEnvironmentVariable("ROLLZY_KEYSTORE");
             string pass = Environment.GetEnvironmentVariable("ROLLZY_KEYSTORE_PASS");
@@ -238,7 +245,7 @@ namespace Rollzy.EditorTools
             PlayerSettings.Android.keystorePass = pass;
             PlayerSettings.Android.keyaliasName = alias;
             PlayerSettings.Android.keyaliasPass = pass;
-            if (!Build(true)) EditorApplication.Exit(1);
+            if (!Build(bundle)) EditorApplication.Exit(1);
         }
 
         static bool Build(bool bundle)

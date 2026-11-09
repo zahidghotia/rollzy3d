@@ -125,6 +125,8 @@ namespace Rollzy
         }
 
         // Referencing Handheld.Vibrate makes Unity add the VIBRATE permission to the Android manifest.
+#if UNITY_ANDROID || UNITY_IOS
         static void KeepVibratePermission() => Handheld.Vibrate();
+#endif
     }
 }

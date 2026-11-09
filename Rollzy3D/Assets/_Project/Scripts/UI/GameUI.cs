@@ -52,7 +52,7 @@ namespace Rollzy
         {
             this.game = game;
             root = doc.rootVisualElement;
-            if (sheet != null) root.styleSheets.Add(sheet);
+            if (sheet != null) root.styleSheets.Add(sheet); // RollzyTheme.tss imports it too, as a fallback
             root.AddToClassList("root");
             root.pickingMode = PickingMode.Ignore;
 
