@@ -164,7 +164,7 @@ namespace Rollzy.EditorTools
             if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
             if (PlayerSettings.bundleVersion == "0.1" || PlayerSettings.bundleVersion == "0.1.0" || string.IsNullOrEmpty(PlayerSettings.bundleVersion)) PlayerSettings.bundleVersion = "1.0.0";
             Debug.Log("[Rollzy 3D] Android settings applied (IL2CPP, ARM64, API 23–36, Vulkan+GLES3, portrait, linear). " +
-                      "Package name: " + PlayerSettings.GetApplicationIdentifier(android) + " — change it before publishing.");
+                      "Package name: " + PlayerSettings.GetApplicationIdentifier(android) + " (must match the app in Play Console).");
         }
 
         // ------------------------------------------------------------ 3. admob
@@ -217,7 +217,31 @@ namespace Rollzy.EditorTools
             Build(true);
         }
 
-        static void Build(bool bundle)
+        /// <summary>
+        /// Command-line release build. Reads the upload key from environment variables so passwords never
+        /// land in ProjectSettings: ROLLZY_KEYSTORE (path), ROLLZY_KEY_ALIAS, ROLLZY_KEYSTORE_PASS.
+        /// Unity -batchmode -quit -projectPath . -executeMethod Rollzy.EditorTools.RollzySetup.BuildAabBatch
+        /// </summary>
+        public static void BuildAabBatch()
+        {
+            string ks = Environment.GetEnvironmentVariable("ROLLZY_KEYSTORE");
+            string pass = Environment.GetEnvironmentVariable("ROLLZY_KEYSTORE_PASS");
+            string alias = Environment.GetEnvironmentVariable("ROLLZY_KEY_ALIAS") ?? "rollzy3d";
+            if (string.IsNullOrEmpty(ks) || !File.Exists(ks) || string.IsNullOrEmpty(pass))
+            {
+                Debug.LogError("[Rollzy 3D] Set ROLLZY_KEYSTORE (existing file) and ROLLZY_KEYSTORE_PASS.");
+                EditorApplication.Exit(1);
+                return;
+            }
+            PlayerSettings.Android.useCustomKeystore = true;
+            PlayerSettings.Android.keystoreName = ks;
+            PlayerSettings.Android.keystorePass = pass;
+            PlayerSettings.Android.keyaliasName = alias;
+            PlayerSettings.Android.keyaliasPass = pass;
+            if (!Build(true)) EditorApplication.Exit(1);
+        }
+
+        static bool Build(bool bundle)
         {
             if (!File.Exists(ScenePath)) CreateGameplayScene();
             ApplyAndroidSettings();
@@ -236,9 +260,11 @@ namespace Rollzy.EditorTools
             if (report.summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
             {
                 Debug.Log($"[Rollzy 3D] Built {path} ({new FileInfo(path).Length / (1024 * 1024)} MB).");
-                EditorUtility.RevealInFinder(path);
+                if (!Application.isBatchMode) EditorUtility.RevealInFinder(path);
+                return true;
             }
-            else Debug.LogError("[Rollzy 3D] Build failed: " + report.summary.result + ". See the Console for the first red error.");
+            Debug.LogError("[Rollzy 3D] Build failed: " + report.summary.result + ". See the Console for the first red error.");
+            return false;
         }
 
         [MenuItem("Rollzy 3D/Reset Save Data", priority = 50)]
