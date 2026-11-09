@@ -160,6 +160,8 @@ namespace Rollzy.EditorTools
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { GraphicsDeviceType.Vulkan, GraphicsDeviceType.OpenGLES3 });
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
             PlayerSettings.colorSpace = ColorSpace.Linear;
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(Root + "/Art/AppIcon.png");
+            if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
             if (PlayerSettings.bundleVersion == "0.1" || PlayerSettings.bundleVersion == "0.1.0" || string.IsNullOrEmpty(PlayerSettings.bundleVersion)) PlayerSettings.bundleVersion = "1.0.0";
             Debug.Log("[Rollzy 3D] Android settings applied (IL2CPP, ARM64, API 23–36, Vulkan+GLES3, portrait, linear). " +
                       "Package name: " + PlayerSettings.GetApplicationIdentifier(android) + " — change it before publishing.");
