@@ -1,0 +1,38 @@
+# Unity generated folders
+Rollzy3D/[Ll]ibrary/
+Rollzy3D/[Tt]emp/
+Rollzy3D/[Oo]bj/
+Rollzy3D/[Ll]ogs/
+Rollzy3D/[Uu]ser[Ss]ettings/
+Rollzy3D/[Bb]uild/
+Rollzy3D/[Bb]uilds/
+Rollzy3D/[Mm]emoryCaptures/
+Rollzy3D/[Rr]ecordings/
+Rollzy3D/*_BurstDebugInformation_DoNotShip/
+
+# IDE and generated project files
+Rollzy3D/.vs/
+Rollzy3D/.idea/
+Rollzy3D/.vscode/
+Rollzy3D/*.csproj
+Rollzy3D/*.sln
+Rollzy3D/*.slnx
+Rollzy3D/*.user
+Rollzy3D/*.pidb
+Rollzy3D/*.booproj
+Rollzy3D/*.svd
+Rollzy3D/*.pdb
+Rollzy3D/*.mdb
+Rollzy3D/*.opendb
+Rollzy3D/*.VC.db
+
+# Build outputs and secrets: never commit signing keys
+*.apk
+*.aab
+*.keystore
+*.jks
+crashlytics-build.properties
+
+# macOS
+.DS_Store
+Rollzy3D/.utmp/

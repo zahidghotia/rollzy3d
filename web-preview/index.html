@@ -1,0 +1,2029 @@
+<title>Rollzy 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@700;800;900&display=swap">
+<style>
+  /* Layout: a portrait "phone" stage centred on an ink field. The 3D world renders behind
+     every screen; menus are sheets and cards layered over it like a mobile app. */
+  :root {
+    --ink: #1d1640;
+    --ink-2: #4a4170;
+    --muted: #8a83a8;
+    --paper: #ffffff;
+    --paper-2: #f3f0ff;
+    --gold: #ffc928;
+    --gold-d: #d99a00;
+    --green: #2fd36b;
+    --green-d: #1b9e4b;
+    --violet: #7b4dff;
+    --violet-d: #5530c9;
+    --pink: #ff4d8d;
+    --display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ink); color: var(--paper); overflow: hidden; font-family: var(--body); }
+  button { font: inherit; }
+  #wrap { height: 100%; display: flex; justify-content: center; }
+  #stage {
+    position: relative; height: 100%; overflow: hidden; background: #8ec5ff;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  #stage canvas { display: block; }
+  svg { display: block; }
+
+  /* ---------- shared pieces */
+  .coinpill {
+    display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 14px;
+    border-radius: 999px; background: rgba(29, 22, 64, 0.55);
+    font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums;
+  }
+  .coinpill.solo { padding-right: 14px; }
+  .gem { width: 15px; height: 15px; background: var(--gold); transform: rotate(45deg); border-radius: 3px; box-shadow: inset -3px -3px 0 var(--gold-d); flex: none; }
+  .plus { width: 30px; height: 30px; border: 0; border-radius: 50%; background: var(--green); color: #fff; font-family: var(--display); font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 3px 0 var(--green-d); }
+  .iconbtn {
+    width: 44px; height: 44px; border: 0; border-radius: 14px; cursor: pointer; flex: none;
+    display: grid; place-items: center; background: rgba(29, 22, 64, 0.55); color: var(--paper);
+  }
+  .iconbtn svg { width: 22px; height: 22px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: var(--display); font-size: 22px; letter-spacing: 0.03em; color: #fff;
+    border: 0; border-radius: 18px; padding: 13px 18px; cursor: pointer;
+    background: var(--green); box-shadow: 0 6px 0 var(--green-d);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--green-d); }
+  .btn.ad { background: var(--violet); box-shadow: 0 6px 0 var(--violet-d); }
+  .btn.ad:active { box-shadow: 0 2px 0 var(--violet-d); }
+  .btn.gold { background: var(--gold); color: var(--ink); box-shadow: 0 6px 0 var(--gold-d); }
+  .btn.ghost { background: var(--paper-2); color: var(--ink); box-shadow: 0 5px 0 #d8d0f5; }
+  .btn.text { background: none; box-shadow: none; color: var(--muted); font-family: var(--body); font-weight: 800; font-size: 15px; padding: 6px; }
+  .btn:focus-visible, .iconbtn:focus-visible, .plus:focus-visible, .node:focus-visible, .tab:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  .adtag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.24); font-size: 13px; letter-spacing: 0.06em; }
+  .adtag svg { width: 11px; height: 11px; }
+  .dot { position: absolute; top: 6px; right: 14px; width: 12px; height: 12px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9); }
+
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+
+  /* ---------- home */
+  #home { justify-content: space-between; padding: 14px 16px 0; background: linear-gradient(rgba(29,22,64,0.25), transparent 30%, transparent 55%, rgba(29,22,64,0.55)); }
+  .appbar { display: flex; justify-content: space-between; align-items: center; }
+  .logo { text-align: center; margin-top: 4vh; font-family: var(--display); line-height: 0.85; filter: drop-shadow(0 6px 0 rgba(29, 22, 64, 0.35)); }
+  .logo span { display: block; font-size: clamp(58px, 18vw, 84px); color: #fff; -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; letter-spacing: 0.02em; }
+  .logo em { display: inline-block; font-style: normal; font-size: 30px; padding: 4px 14px; margin-top: 6px; border-radius: 12px; background: var(--pink); transform: rotate(-4deg); -webkit-text-stroke: 0; }
+  .homeMain { display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: min(100%, 300px); margin: auto auto 18px; }
+  .worldTag { align-self: center; padding: 6px 14px; border-radius: 999px; background: rgba(29, 22, 64, 0.55); font-weight: 900; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .btn.play { font-size: 40px; padding: 14px 18px 12px; flex-direction: column; gap: 0; border-radius: 24px; box-shadow: 0 8px 0 var(--green-d), 0 18px 30px rgba(0,0,0,0.25); animation: breathe 1.8s ease-in-out infinite; }
+  .btn.play small { font-family: var(--body); font-weight: 900; font-size: 14px; letter-spacing: 0.14em; opacity: 0.9; }
+  @keyframes breathe { 50% { transform: scale(1.04); } }
+  .tabsbar {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 0 -16px;
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--paper); border-radius: 26px 26px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.18);
+  }
+  .tab { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; cursor: pointer; color: var(--ink-2); padding: 6px 0; border-radius: 14px; font-weight: 900; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .tab .ic { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; color: #fff; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15); }
+  .tab .ic svg { width: 24px; height: 24px; }
+
+  /* ---------- HUD */
+  #hud { position: absolute; inset: 0; pointer-events: none; }
+  #hud .top { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 14px 16px 0; }
+  #hud .iconbtn, #hud .coinpill { pointer-events: auto; }
+  .hmid { display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: var(--display); text-shadow: 0 2px 0 rgba(29, 22, 64, 0.35); }
+  .hmid .lvl { font-size: 20px; }
+  .bar { width: min(36vw, 160px); height: 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.4); overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--paper); border-radius: 6px; }
+  .speed { font-size: 13px; letter-spacing: 0.08em; font-variant-numeric: tabular-nums; }
+  .toast {
+    position: absolute; top: 104px; left: 50%; transform: translate(-50%, -8px);
+    padding: 8px 18px; border-radius: 999px; background: rgba(29, 22, 64, 0.5);
+    font-family: var(--display); font-size: 20px; letter-spacing: 0.08em; white-space: nowrap;
+    opacity: 0; transition: opacity 0.35s, transform 0.35s;
+  }
+  .toast small { display: block; font-family: var(--body); font-weight: 900; font-size: 11px; letter-spacing: 0.18em; opacity: 0.85; text-align: center; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- in-game overlays */
+  .overlay { align-items: center; justify-content: center; padding: 24px 16px; background: rgba(29, 22, 64, 0.5); }
+  #ready { pointer-events: none; gap: 12px; text-align: center; background: linear-gradient(transparent 10%, rgba(29,22,64,0.35) 35%, rgba(29,22,64,0.35) 68%, transparent 90%); }
+  #ready button { pointer-events: auto; }
+  #ready h1 { font-family: var(--display); font-weight: 400; margin: 0; line-height: 1; font-size: clamp(44px, 13vw, 64px); text-shadow: 0 4px 0 rgba(29, 22, 64, 0.35); }
+  .route { margin: 0; font-family: var(--display); font-size: 17px; letter-spacing: 0.03em; text-shadow: 0 2px 0 rgba(29, 22, 64, 0.3); text-wrap: balance; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .chip { padding: 4px 12px; border-radius: 999px; background: rgba(29, 22, 64, 0.5); font-weight: 900; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .chip.hot { background: var(--pink); }
+  .hint { margin: 0; font-weight: 800; font-size: 15px; line-height: 1.45; text-shadow: 0 2px 0 rgba(29, 22, 64, 0.3); }
+  .cta { margin: 6px 0 0; font-family: var(--display); font-size: 26px; letter-spacing: 0.06em; animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.55; transform: scale(0.96); } }
+  .trybtn { font-size: 16px; padding: 9px 14px; border-radius: 14px; }
+
+  .card {
+    width: min(100%, 330px); display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+    padding: 24px 20px 18px; border-radius: 28px; text-align: center;
+    background: var(--paper); color: var(--ink);
+    box-shadow: 0 10px 0 rgba(0, 0, 0, 0.15), 0 30px 60px rgba(0, 0, 0, 0.3);
+    animation: pop 0.35s cubic-bezier(0.2, 1.5, 0.4, 1);
+  }
+  @keyframes pop { from { transform: scale(0.8); opacity: 0; } }
+  .card h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 38px; line-height: 1; }
+  .card p { margin: 0; font-weight: 800; color: var(--ink-2); }
+  .stars { display: flex; justify-content: center; gap: 6px; margin: 2px 0; }
+  .stars svg { width: 54px; height: 54px; }
+  .stars svg:nth-child(2) { transform: translateY(-10px); width: 62px; height: 62px; }
+  .reward { display: flex; align-items: center; justify-content: center; gap: 10px; font-family: var(--display); font-size: 34px; color: var(--ink); }
+  .ring { position: relative; width: 104px; height: 104px; margin: 4px auto; }
+  .ring svg { width: 104px; height: 104px; transform: rotate(-90deg); }
+  .ring b { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--display); font-size: 40px; }
+
+  /* ---------- sheets (map, shop, daily, spin, settings) */
+  .sheet { background: rgba(29, 22, 64, 0.78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .sheethead { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 14px 16px 10px; }
+  .sheethead h2 { margin: 0; text-align: center; font-family: var(--display); font-weight: 400; font-size: 28px; letter-spacing: 0.02em; }
+  .body { flex: 1; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; padding: 6px 16px 28px; display: flex; flex-direction: column; gap: 16px; }
+
+  .world { border-radius: 24px; padding: 14px 14px 16px; color: #fff; position: relative; overflow: hidden; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.12); }
+  .world header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+  .world h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 24px; text-shadow: 0 2px 0 rgba(0,0,0,0.25); }
+  .world header span { font-weight: 900; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; text-shadow: 0 1px 0 rgba(0,0,0,0.25); white-space: nowrap; }
+  .nodes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px 8px; }
+  .node {
+    aspect-ratio: 1; max-width: 100%; border: 0; border-radius: 50%; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    background: var(--paper); color: var(--ink); font-family: var(--display); font-size: 20px; line-height: 1;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+  }
+  .node .st { display: flex; gap: 1px; }
+  .node .st svg { width: 9px; height: 9px; }
+  .node.cur { background: var(--gold); animation: breathe 1.4s ease-in-out infinite; }
+  .node.lock { background: rgba(255,255,255,0.35); color: rgba(29,22,64,0.55); cursor: default; box-shadow: none; }
+  .node.lock svg { width: 16px; height: 16px; }
+  .world .veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(29,22,64,0.45); font-weight: 900; letter-spacing: 0.1em; text-transform: uppercase; font-size: 13px; }
+
+  .segtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; border-radius: 16px; background: rgba(255,255,255,0.12); }
+  .segtabs button { border: 0; border-radius: 12px; padding: 9px; cursor: pointer; background: none; color: #fff; font-family: var(--display); font-size: 18px; }
+  .segtabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); }
+  .freebar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 12px 12px 16px; border-radius: 20px; background: linear-gradient(120deg, #ffcf3f, #ff9b3f); color: var(--ink); }
+  .freebar b { font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.1; }
+  .freebar small { display: block; font-weight: 800; font-size: 12px; opacity: 0.8; }
+  .freebar .btn { font-size: 16px; padding: 9px 12px; border-radius: 14px; flex: none; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .item {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 6px 8px;
+    border: 0; border-radius: 20px; cursor: pointer; background: var(--paper); color: var(--ink);
+    box-shadow: 0 5px 0 #d8d0f5; position: relative;
+  }
+  .item.eq { box-shadow: 0 0 0 4px var(--green), 0 5px 0 var(--green-d); }
+  .item img, .item .sw { width: 72%; aspect-ratio: 1; border-radius: 50%; }
+  .item .sw { box-shadow: inset 0 -6px 0 rgba(0,0,0,0.12); }
+  .item.locked::after { content: ""; position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='6' y='11' width='12' height='9' rx='2' fill='white'/%3E%3Cpath d='M9 11V8a3 3 0 0 1 6 0v3' fill='none' stroke='white' stroke-width='2.4'/%3E%3C/svg%3E") center / 14px no-repeat; }
+  .item .nm { font-weight: 900; font-size: 13px; line-height: 1.1; }
+  .item .act { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 5px 4px; border-radius: 10px; font-family: var(--display); font-size: 14px; background: var(--paper-2); }
+  .item .act.buy { background: var(--gold); }
+  .item .act.ad { background: var(--violet); color: #fff; }
+  .item .act.ad svg { width: 10px; height: 10px; }
+  .item .act.ok { background: var(--green); color: #fff; }
+  .item .act .gem { width: 10px; height: 10px; }
+
+  .days { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .day { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 4px; border-radius: 18px; background: rgba(255,255,255,0.12); font-weight: 900; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .day b { font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: 0; display: flex; align-items: center; gap: 6px; }
+  .day.big { grid-column: span 2; }
+  .day.big img { width: 48px; height: 48px; }
+  .day.today { background: var(--gold); color: var(--ink); box-shadow: 0 5px 0 var(--gold-d); }
+  .day.done { opacity: 0.55; }
+  .center { display: flex; flex-direction: column; align-items: stretch; gap: 12px; width: min(100%, 300px); margin: 0 auto; text-align: center; }
+  .note { margin: 0; font-weight: 800; font-size: 14px; color: rgba(255,255,255,0.8); text-align: center; }
+
+  .wheelbox { position: relative; width: min(100%, 300px); aspect-ratio: 1; margin: 6px auto 4px; }
+  .wheelbox canvas { width: 100%; height: 100%; transition: transform 4s cubic-bezier(0.15, 0.7, 0.15, 1); }
+  .wheelbox .pin { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent; border-top: 30px solid var(--pink); filter: drop-shadow(0 3px 0 rgba(0,0,0,0.3)); }
+  .wheelbox .hub { position: absolute; inset: 41%; border-radius: 50%; background: var(--paper); box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
+
+  .rows { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 18px; background: rgba(255,255,255,0.1); font-weight: 900; }
+  .toggle { min-width: 74px; border: 0; border-radius: 999px; padding: 8px 12px; cursor: pointer; font-family: var(--display); font-size: 16px; background: rgba(255,255,255,0.18); color: #fff; }
+  .toggle[aria-pressed="true"] { background: var(--green); }
+  .toggle.danger { background: #ff4d6d; }
+
+  /* ---------- test ad + snackbar */
+  #ad { position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column; background: #0d0a1f; }
+  #ad header { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; }
+  #ad .badge { padding: 4px 10px; border-radius: 8px; background: var(--gold); color: var(--ink); font-weight: 900; font-size: 12px; letter-spacing: 0.12em; }
+  #ad .count { min-width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.12); font-family: var(--display); font-size: 20px; }
+  #ad .count:not(:disabled) { cursor: pointer; background: var(--paper); color: var(--ink); }
+  #ad .creative { flex: 1; margin: 0 16px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 20px; background: radial-gradient(circle at 30% 20%, #ff7ab0, transparent 50%), radial-gradient(circle at 80% 80%, #7b4dff, transparent 55%), #2a1c66; }
+  #ad .creative b { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1.05; }
+  #ad .creative p { margin: 0; font-weight: 800; opacity: 0.85; }
+  #ad .adbar { height: 6px; margin: 14px 16px calc(18px + env(safe-area-inset-bottom, 0px)); border-radius: 3px; background: rgba(255,255,255,0.15); overflow: hidden; }
+  #ad .adbar i { display: block; height: 100%; width: 0; background: var(--gold); }
+  .snack {
+    position: absolute; left: 50%; bottom: 110px; z-index: 60; transform: translate(-50%, 20px);
+    max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 16px;
+    background: var(--paper); color: var(--ink); font-weight: 900; font-size: 15px; text-align: center;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3); opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s;
+  }
+  .snack.show { opacity: 1; transform: translate(-50%, 0); }
+  @media (prefers-reduced-motion: reduce) {
+    .cta, .btn.play, .node.cur { animation: none; }
+    .card { animation: none; }
+    .wheelbox canvas { transition-duration: 0.01s; }
+  }
+</style>
+
+<div id="wrap">
+  <div id="stage">
+
+    <!-- ===== HUD ===== -->
+    <div id="hud" hidden>
+      <div class="top">
+        <button class="iconbtn" id="pauseBtn" type="button" aria-label="Pause">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+        </button>
+        <div class="hmid"><div class="lvl" id="lvl">LEVEL 1</div><div class="bar"><i id="fill"></i></div><div class="speed" id="speed">0 KM/H</div></div>
+        <div class="coinpill solo"><b class="gem"></b><span id="runCoins">0</span></div>
+      </div>
+      <div class="toast" id="toast"><small>NOW ENTERING</small><span id="toastName">JUNGLE</span></div>
+    </div>
+
+    <!-- ===== HOME ===== -->
+    <section class="screen" id="home" hidden>
+      <div class="appbar">
+        <div class="coinpill"><b class="gem"></b><span class="coinsVal">0</span><button class="plus" type="button" data-go="shop" aria-label="Get coins">+</button></div>
+        <button class="iconbtn" type="button" data-go="settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="18" height="2.4" rx="1.2"/><rect x="3" y="11" width="18" height="2.4" rx="1.2"/><rect x="3" y="17" width="18" height="2.4" rx="1.2"/><circle cx="8" cy="6.2" r="2.6"/><circle cx="16" cy="12.2" r="2.6"/><circle cx="10" cy="18.2" r="2.6"/></svg>
+        </button>
+      </div>
+      <div class="logo"><span>ROLLZY</span><em>3D</em></div>
+      <div class="homeMain">
+        <div class="worldTag" id="homeWorld">World 1 · Jungle</div>
+        <button class="btn play" id="playBtn" type="button">PLAY<small id="playLvl">LEVEL 1</small></button>
+        <button class="btn ad" id="homeFree" type="button">+100 coins <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+      </div>
+      <nav class="tabsbar">
+        <button class="tab" type="button" data-go="map"><span class="ic" style="background:#2f80ed"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3.5 3 5.6v15l6-2.1 6 2.1 6-2.1v-15l-6 2.1-6-2.1zm.9 2.4 4.2 1.5v11.3l-4.2-1.5V5.9z"/></svg></span>Levels</button>
+        <button class="tab" type="button" data-go="shop"><span class="ic" style="background:#ff4d8d"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/><path d="M5 9.5c4.5 2 9.5 2 14 0M5 14.5c4.5-2 9.5-2 14 0" stroke="#fff" stroke-width="1.8" fill="none"/></svg></span>Balls</button>
+        <button class="tab" type="button" data-go="daily"><span class="ic" style="background:#ff9b3f"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="10" width="16" height="10" rx="1.5"/><rect x="3" y="7" width="18" height="4" rx="1.2"/><rect x="11" y="7" width="2" height="13" fill="#fff"/><path d="M12 7C10 3 6 4 7.5 7zM12 7c2-4 6-3 4.5 0z"/></svg></span>Daily<i class="dot" id="dailyDot" hidden></i></button>
+        <button class="tab" type="button" data-go="spin"><span class="ic" style="background:#7b4dff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></svg></span>Spin<i class="dot" id="spinDot" hidden></i></button>
+      </nav>
+    </section>
+
+    <!-- ===== READY ===== -->
+    <section class="screen overlay" id="ready" hidden>
+      <h1 id="readyTitle">LEVEL 1</h1>
+      <p class="route" id="route">Jungle → Mountains</p>
+      <div class="chips"><span class="chip" id="kmh">36 km/h</span><span class="chip" id="diff">Easy</span></div>
+      <p class="hint">Swipe left / right to dodge<br>Swipe up to jump</p>
+      <button class="btn ad trybtn" id="tryBtn" type="button" hidden>Try <span id="tryName">Lava</span> ball <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+      <p class="cta">TAP TO START</p>
+    </section>
+
+    <!-- ===== PAUSE ===== -->
+    <section class="screen overlay" id="pause" hidden>
+      <div class="card">
+        <h2>PAUSED</h2>
+        <button class="btn" id="resumeBtn" type="button">Resume</button>
+        <button class="btn ghost" id="restartBtn" type="button">Restart</button>
+        <button class="btn ghost" id="pauseHome" type="button">Home</button>
+      </div>
+    </section>
+
+    <!-- ===== REVIVE ===== -->
+    <section class="screen overlay" id="revive" hidden>
+      <div class="card">
+        <h2>SECOND CHANCE?</h2>
+        <div class="ring">
+          <svg viewBox="0 0 104 104"><circle cx="52" cy="52" r="46" stroke="#eee8ff" stroke-width="9" fill="none"/><circle id="ringArc" cx="52" cy="52" r="46" stroke="#7b4dff" stroke-width="9" fill="none" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="0"/></svg>
+          <b id="ringNum">5</b>
+        </div>
+        <button class="btn ad" id="reviveBtn" type="button">Continue <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+        <button class="btn text" id="reviveNo" type="button">No thanks</button>
+      </div>
+    </section>
+
+    <!-- ===== FAILED ===== -->
+    <section class="screen overlay" id="failed" hidden>
+      <div class="card">
+        <h2>OOPS!</h2>
+        <div class="reward"><b class="gem"></b><span id="failCoins">+0</span></div>
+        <button class="btn" id="retryBtn" type="button">Retry</button>
+        <button class="btn ad" id="skipBtn" type="button" hidden>Skip level <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+        <button class="btn ghost" id="failHome" type="button">Home</button>
+      </div>
+    </section>
+
+    <!-- ===== COMPLETE ===== -->
+    <section class="screen overlay" id="complete" hidden>
+      <div class="card">
+        <h2>LEVEL COMPLETE!</h2>
+        <div class="stars" id="stars"></div>
+        <div class="reward"><b class="gem"></b><span id="winCoins">+0</span></div>
+        <p id="unlockNote" hidden></p>
+        <button class="btn ad" id="tripleBtn" type="button">x3 coins <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+        <button class="btn" id="nextBtn" type="button">Next level</button>
+        <button class="btn text" id="winHome" type="button">Home</button>
+      </div>
+    </section>
+
+    <!-- ===== LEVEL MAP ===== -->
+    <section class="screen sheet" id="map" hidden>
+      <header class="sheethead"><button class="iconbtn" type="button" data-go="home" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Levels</h2><div class="coinpill solo"><b class="gem"></b><span class="coinsVal">0</span></div></header>
+      <div class="body" id="mapList"></div>
+    </section>
+
+    <!-- ===== SHOP ===== -->
+    <section class="screen sheet" id="shop" hidden>
+      <header class="sheethead"><button class="iconbtn" type="button" data-go="home" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Shop</h2><div class="coinpill solo"><b class="gem"></b><span class="coinsVal">0</span></div></header>
+      <div class="body">
+        <div class="segtabs" role="tablist"><button type="button" role="tab" id="tabBalls" aria-selected="true">Balls</button><button type="button" role="tab" id="tabTrails" aria-selected="false">Trails</button></div>
+        <div class="freebar"><div><b>Free coins</b><small>Watch a short ad, get 100</small></div><button class="btn ad" id="shopFree" type="button">+100 <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button></div>
+        <div class="grid" id="shopGrid"></div>
+      </div>
+    </section>
+
+    <!-- ===== DAILY ===== -->
+    <section class="screen sheet" id="daily" hidden>
+      <header class="sheethead"><button class="iconbtn" type="button" data-go="home" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Daily Reward</h2><div class="coinpill solo"><b class="gem"></b><span class="coinsVal">0</span></div></header>
+      <div class="body">
+        <p class="note">Come back every day. Day 7 unlocks the Smiley ball.</p>
+        <div class="days" id="days"></div>
+        <div class="center">
+          <button class="btn ad" id="claim2" type="button">Claim x2 <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+          <button class="btn" id="claim1" type="button">Claim</button>
+          <p class="note" id="dailyNote" hidden>Claimed! Next reward tomorrow.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SPIN ===== -->
+    <section class="screen sheet" id="spin" hidden>
+      <header class="sheethead"><button class="iconbtn" type="button" data-go="home" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Lucky Spin</h2><div class="coinpill solo"><b class="gem"></b><span class="coinsVal">0</span></div></header>
+      <div class="body">
+        <div class="wheelbox"><canvas id="wheel" width="600" height="600"></canvas><div class="hub"></div><div class="pin"></div></div>
+        <div class="center">
+          <button class="btn gold" id="spinFree" type="button">Free spin</button>
+          <button class="btn ad" id="spinAd" type="button">Spin again <span class="adtag"><svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>AD</span></button>
+          <p class="note">Win coins, the Neon Grid ball or the Sparkle trail.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SETTINGS ===== -->
+    <section class="screen sheet" id="settings" hidden>
+      <header class="sheethead"><button class="iconbtn" type="button" data-go="home" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Settings</h2><div class="coinpill solo"><b class="gem"></b><span class="coinsVal">0</span></div></header>
+      <div class="body">
+        <div class="rows">
+          <div class="row">Sound <button class="toggle" id="sndT" type="button" aria-pressed="true">On</button></div>
+          <div class="row">Vibration <button class="toggle" id="vibT" type="button" aria-pressed="true">On</button></div>
+          <div class="row">Reset progress <button class="toggle" id="resetT" type="button">Reset</button></div>
+        </div>
+        <p class="note">This preview shows test ads only. The Android build will use Google AdMob.</p>
+      </div>
+    </section>
+
+    <!-- ===== TEST AD ===== -->
+    <div id="ad" hidden>
+      <header><span class="badge">TEST AD</span><button class="count" id="adCount" type="button" disabled>5</button></header>
+      <div class="creative"><b id="adKind">Rewarded video</b><p id="adNote">Watch to the end to get your reward</p></div>
+      <div class="adbar"><i id="adFill"></i></div>
+    </div>
+    <div class="snack" id="snack"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+  // ================================================================ constants
+  const LANES = 3, LANE_W = 2.5, TRACK_W = LANES * LANE_W + 1, TILE = 4;
+  const RUNUP = 12, SAFE = 18, RUNOUT = 30, COIN_Y = 0.6, COIN_STEP = 1.6, R = 0.5;
+  const G = 9.81 * 2.2, JUMP_V = 7, COYOTE = 0.1, BUFFER = 0.15, BONUS = 50;
+  const STEP = 0.25, LEVELS_PER_WORLD = 10, MAP_LEVELS = 50;
+
+  const BIOMES = [
+    { name: "Jungle", skyTop: 0x3fa9ec, skyBot: 0xc6f1ff, fog: 0xbfe9e4, ground: 0x2f8f46,
+      gA: 0xfff1d6, gB: 0xffdca3, edge: 0x8a5a33, glow: 0xffd23f, obstacle: 0xff4d6d, hazard: 0xff9f1c },
+    { name: "Mountains", skyTop: 0x4f73d9, skyBot: 0xe6eeff, fog: 0xd6dff6, ground: 0x7d9a6a,
+      gA: 0xf2f4ff, gB: 0xdde3ff, edge: 0x4a5bc4, glow: 0x7fd8ff, obstacle: 0xe84855, hazard: 0x3185fc },
+    { name: "Neon City", skyTop: 0x2d1f6e, skyBot: 0xff9a7a, fog: 0xd9849a, ground: 0x35324d,
+      gA: 0x5a5678, gB: 0x4c4869, edge: 0x2a2645, glow: 0x00e5ff, obstacle: 0xff3d9a, hazard: 0xffd400 },
+    { name: "Desert", skyTop: 0x4fa3ff, skyBot: 0xffe2a8, fog: 0xffdca0, ground: 0xe8b96a,
+      gA: 0xfff3dc, gB: 0xffdfb0, edge: 0xc2703d, glow: 0xff7a3d, obstacle: 0x2d7dd2, hazard: 0xe4572e },
+    { name: "Snow Peaks", skyTop: 0x7fa8f5, skyBot: 0xf4fbff, fog: 0xe6f1ff, ground: 0xeef5ff,
+      gA: 0xeaf5ff, gB: 0xd2e8ff, edge: 0x5aa9e6, glow: 0x9b7bff, obstacle: 0xff5d8f, hazard: 0x7b61ff },
+  ];
+
+  const BALLS = [
+    { id: "classic", name: "Bubblegum", how: { t: "free" } },
+    { id: "beach", name: "Beach Ball", how: { t: "coins", n: 300 } },
+    { id: "soccer", name: "Striker", how: { t: "coins", n: 500 } },
+    { id: "basket", name: "Hoops", how: { t: "ads", n: 2 } },
+    { id: "tennis", name: "Ace", how: { t: "coins", n: 800 } },
+    { id: "melon", name: "Melon", how: { t: "ads", n: 3 } },
+    { id: "eight", name: "Lucky 8", how: { t: "coins", n: 1200 } },
+    { id: "earth", name: "Planet", how: { t: "level", n: 10 } },
+    { id: "smile", name: "Smiley", how: { t: "daily" } },
+    { id: "candy", name: "Candy", how: { t: "ads", n: 4 } },
+    { id: "chrome", name: "Chrome", how: { t: "coins", n: 2000 } },
+    { id: "neon", name: "Neon Grid", how: { t: "spin" } },
+    { id: "lava", name: "Lava", how: { t: "ads", n: 5 } },
+    { id: "gold", name: "Gold Rush", how: { t: "coins", n: 3000 } },
+    { id: "galaxy", name: "Galaxy", how: { t: "level", n: 25 } },
+  ];
+  const TRAILS = [
+    { id: "none", name: "None", how: { t: "free" }, sw: "repeating-linear-gradient(45deg,#ece9f7 0 8px,#ddd8f0 8px 16px)" },
+    { id: "cloud", name: "Cloud", how: { t: "free" }, sw: "radial-gradient(circle at 40% 40%,#fff,#cfd8ff)" },
+    { id: "rainbow", name: "Rainbow", how: { t: "coins", n: 600 }, sw: "linear-gradient(135deg,#ff4d4d,#ffb03b,#ffe14d,#4cd964,#3fa9ff,#a66bff)" },
+    { id: "fire", name: "Fire", how: { t: "ads", n: 3 }, sw: "radial-gradient(circle at 50% 70%,#fff3a0,#ffb000 35%,#ff3d00 75%)" },
+    { id: "stars", name: "Stardust", how: { t: "coins", n: 1000 }, sw: "radial-gradient(circle at 30% 30%,#fff 0 6%,transparent 7%),radial-gradient(circle at 70% 60%,#fff 0 5%,transparent 6%),linear-gradient(135deg,#ffd23f,#ff9b3f)" },
+    { id: "neon", name: "Neon", how: { t: "level", n: 15 }, sw: "linear-gradient(135deg,#00e5ff,#ff3d9a)" },
+    { id: "sparkle", name: "Sparkle", how: { t: "spin" }, sw: "conic-gradient(#ff4d8d,#ffd23f,#2fd36b,#3fa9ff,#a66bff,#ff4d8d)" },
+  ];
+  const DAILY = [50, 75, 100, 150, 200, 300, "smile"];
+  const PRIZES = [
+    { c: 25, w: 20, col: "#ff4d8d" }, { c: 100, w: 10, col: "#ffc928" }, { c: 50, w: 18, col: "#2fd36b" },
+    { ball: "neon", w: 4, col: "#00b8d4", label: "BALL" }, { c: 25, w: 20, col: "#7b4dff" },
+    { c: 200, w: 6, col: "#ff9b3f" }, { c: 50, w: 18, col: "#2f80ed" }, { trail: "sparkle", w: 4, col: "#e83e8c", label: "TRAIL" },
+  ];
+
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  const toward = (v, target, d) => Math.abs(target - v) <= d ? target : v + Math.sign(target - v) * d;
+  const laneX = i => -(i - (LANES - 1) / 2) * LANE_W; // looking down +z, screen-right is local -x
+  const lc = hex => new THREE.Color(hex).convertSRGBToLinear();
+  const $ = id => document.getElementById(id);
+
+  function rngFor(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const hashStr = s => { let h = 2166136261; for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; };
+
+  // Difficulty curve: fast from the start, faster every level, and faster still within a level.
+  const levelSpeed = lvl => Math.min(13 + (lvl - 1) * 0.45, 26);
+  const levelDiff = lvl => Math.min(1, (lvl - 1) / 25);
+  const diffLabel = lvl => lvl <= 2 ? "Normal" : lvl <= 6 ? "Hard" : lvl <= 15 ? "Expert" : "Insane";
+  const SPEED_RAMP = 0.22;
+  const isSpecial = t => t === "twist" || t === "loop" || t === "helix";
+  const worldOf = lvl => Math.floor((lvl - 1) / LEVELS_PER_WORLD) % BIOMES.length;
+
+  // ================================================================ save
+  const SAVE_KEY = "rollzy.save.v2";
+  const freshSave = () => ({
+    coins: 0, maxLevel: 1, stars: {}, balls: ["classic"], trails: ["none", "cloud"], ball: "classic", trail: "none", trailFix: true,
+    adProgress: {}, daily: { last: "", streak: 0 }, spinFree: "", completions: 0, sound: true, vibe: true,
+  });
+  let save = freshSave();
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) save = Object.assign(freshSave(), JSON.parse(raw));
+    else { const old = Number(localStorage.getItem("rollzy.coins")); if (old > 0) save.coins = old; }
+  } catch {}
+  // Older saves had the white Cloud trail switched on by default; turn it off once.
+  if (!save.trailFix) { if (save.trail === "cloud") save.trail = "none"; save.trailFix = true; }
+  const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch {} };
+  const today = () => new Date().toDateString();
+  const yesterday = () => new Date(Date.now() - 864e5).toDateString();
+
+  // ================================================================ audio (tiny synth)
+  let actx = null;
+  function audio() {
+    if (!save.sound) return null;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === "suspended") actx.resume();
+      return actx;
+    } catch { return null; }
+  }
+  function tone(f1, f2, dur, type = "sine", vol = 0.08, delay = 0) {
+    const a = audio(); if (!a) return;
+    const t = a.currentTime + delay, o = a.createOscillator(), g = a.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f1, t);
+    o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol) {
+    const a = audio(); if (!a) return;
+    const buf = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = buf; f.type = "lowpass"; f.frequency.value = 900; g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+  }
+  const SFX = {
+    coin: () => tone(1046, 1568, 0.08, "square", 0.035),
+    jump: () => tone(330, 700, 0.16, "sine", 0.09),
+    crash: () => { noise(0.35, 0.3); tone(220, 55, 0.3, "sawtooth", 0.05); },
+    win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f * 1.01, 0.2, "triangle", 0.08, i * 0.09)),
+    click: () => tone(660, 880, 0.05, "sine", 0.05),
+    reward: () => [784, 1047, 1319].forEach((f, i) => tone(f, f, 0.15, "triangle", 0.07, i * 0.07)),
+  };
+  const buzz = ms => { if (save.vibe) try { navigator.vibrate && navigator.vibrate(ms); } catch {} };
+
+  // ================================================================ renderer, lights, environment
+  const wrap = $("wrap"), stage = $("stage");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  stage.prepend(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xffffff, 70, 420);
+  const camera = new THREE.PerspectiveCamera(60, 0.5, 0.3, 1200);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9a8fb8, 0.6);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.0);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.bias = -0.0005;
+  Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 160 });
+  scene.add(sun, sun.target);
+
+  const GRAD_VS = "varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }";
+
+  const skyMat = new THREE.ShaderMaterial({
+    uniforms: { top: { value: new THREE.Color() }, bottom: { value: new THREE.Color() } },
+    vertexShader: GRAD_VS,
+    fragmentShader: "uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(vP.y * 1.6 + 0.12, 0.0, 1.0); gl_FragColor = vec4(mix(bottom, top, pow(h, 0.75)), 1.0); }",
+    side: THREE.BackSide, depthWrite: false,
+  });
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), skyMat);
+  sky.renderOrder = -1;
+  scene.add(sky);
+
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x2f8f46, roughness: 1 });
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  scene.add(ground);
+
+  // ================================================================ textures & materials
+  const hexStr = h => "#" + h.toString(16).padStart(6, "0");
+  const shadeHex = (h, f) => "#" + new THREE.Color(h).multiplyScalar(f).getHexString();
+  function canvasTex(w, h, draw, srgb = true) {
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    draw(c.getContext("2d"), w, h);
+    const t = new THREE.CanvasTexture(c);
+    if (srgb) t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 4;
+    return t;
+  }
+  const spriteTex = canvasTex(64, 64, (g) => {
+    const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.35, "rgba(255,255,255,0.8)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  }, false);
+
+  const GEO = {
+    box: new THREE.BoxGeometry(1, 1, 1),
+    cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 28),
+    sph: new THREE.SphereGeometry(0.5, 48, 32),
+    coin: new THREE.CylinderGeometry(0.36, 0.36, 0.09, 28),
+  };
+  const SCN_GEO = {
+    trunk: new THREE.CylinderGeometry(0.45, 0.55, 1, 7),
+    pillar: new THREE.CylinderGeometry(1, 1, 1, 12),
+    blob: new THREE.IcosahedronGeometry(1, 1),
+    ball: new THREE.SphereGeometry(1, 14, 10),
+    cone: new THREE.ConeGeometry(1, 1, 9),
+    pyr: new THREE.ConeGeometry(1, 1, 4),
+    box: new THREE.BoxGeometry(1, 1, 1),
+    bld: new THREE.BoxGeometry(1, 1, 1),
+    dash: new THREE.BoxGeometry(1, 1, 1),
+  };
+
+  const matCache = new Map();
+  const mat = hex => {
+    if (!matCache.has(hex)) matCache.set(hex, new THREE.MeshStandardMaterial({ color: lc(hex), roughness: 0.5 }));
+    return matCache.get(hex);
+  };
+  // Striped "hazard" look for obstacles.
+  const stripeCache = new Map();
+  function stripeMat(hex, alt) {
+    const key = hex + ":" + alt;
+    if (stripeCache.has(key)) return stripeCache.get(key);
+    const tex = canvasTex(128, 128, (g) => {
+      g.fillStyle = hexStr(hex); g.fillRect(0, 0, 128, 128);
+      g.save(); g.translate(64, 64); g.rotate(-Math.PI / 4);
+      g.fillStyle = alt || shadeHex(hex, 0.72);
+      for (let x = -160; x < 160; x += 36) g.fillRect(x, -160, 18, 320);
+      g.restore();
+      g.strokeStyle = "rgba(255,255,255,0.9)"; g.lineWidth = 10; g.strokeRect(5, 5, 118, 118);
+    });
+    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35, metalness: 0.05 });
+    stripeCache.set(key, m);
+    return m;
+  }
+  const checkerMat = new THREE.MeshStandardMaterial({
+    roughness: 0.5,
+    map: canvasTex(256, 64, (g) => { for (let x = 0; x < 16; x++) for (let y = 0; y < 4; y++) { g.fillStyle = (x + y) % 2 ? "#1d1640" : "#ffffff"; g.fillRect(x * 16, y * 16, 16, 16); } }),
+  });
+  // Matcaps fake a shiny studio reflection without float render targets, so they work on every phone.
+  function matcap(light, mid, dark) {
+    return canvasTex(256, 256, (g) => {
+      const base = g.createRadialGradient(100, 90, 10, 128, 128, 128);
+      base.addColorStop(0, light); base.addColorStop(0.45, mid); base.addColorStop(0.92, dark); base.addColorStop(1, dark);
+      g.fillStyle = base; g.fillRect(0, 0, 256, 256);
+      g.fillStyle = "rgba(255,255,255,0.35)";
+      g.beginPath(); g.ellipse(128, 196, 90, 22, 0, 0, Math.PI * 2); g.fill();
+      const hi = g.createRadialGradient(92, 78, 0, 92, 78, 34);
+      hi.addColorStop(0, "rgba(255,255,255,1)"); hi.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = hi; g.fillRect(0, 0, 256, 256);
+    });
+  }
+  const GOLD_CAP = matcap("#fff6c2", "#ffc928", "#9a5a00");
+  const CHROME_CAP = matcap("#ffffff", "#b9c6d6", "#3d4656");
+  const coinMat = new THREE.MeshMatcapMaterial({ matcap: GOLD_CAP });
+  const roadMat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.55, side: THREE.DoubleSide });
+  const glowMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const scnMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, flatShading: true });
+  const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 });
+  const bldMat = (() => {
+    const r = rngFor(42), lit = [];
+    for (let i = 0; i < 60; i++) lit.push(r() < 0.55);
+    const draw = glow => (g) => {
+      g.fillStyle = glow ? "#000" : "#ece9f7"; g.fillRect(0, 0, 64, 128);
+      for (let row = 0; row < 12; row++) for (let col = 0; col < 5; col++) {
+        const on = lit[row * 5 + col], x = 4 + col * 12, y = 4 + row * 10;
+        if (glow) { if (on) { g.fillStyle = "#ffcf73"; g.fillRect(x, y, 8, 6); } }
+        else { g.fillStyle = on ? "#fff4c4" : "#4d5180"; g.fillRect(x, y, 8, 6); }
+      }
+    };
+    return new THREE.MeshStandardMaterial({ roughness: 0.5, map: canvasTex(64, 128, draw(false)), emissive: 0xffffff, emissiveMap: canvasTex(64, 128, draw(true)), emissiveIntensity: 0.8 });
+  })();
+
+  // ================================================================ ball skins
+  const SKIN_DRAW = {
+    classic: (g) => { g.fillStyle = "#ff4f9a"; g.fillRect(0, 0, 512, 256); g.fillStyle = "#fff"; g.fillRect(0, 116, 512, 24); g.fillRect(116, 0, 24, 256); g.fillRect(372, 0, 24, 256); },
+    beach: (g) => {
+      ["#ff4d4d", "#ffffff", "#2f80ed", "#ffd23f", "#ffffff", "#27ae60"].forEach((c, i) => { g.fillStyle = c; g.fillRect(i * 512 / 6, 0, 512 / 6 + 1, 256); });
+      g.fillStyle = "#fff"; g.fillRect(0, 0, 512, 24); g.fillRect(0, 232, 512, 24);
+    },
+    soccer: (g) => {
+      g.fillStyle = "#fafafa"; g.fillRect(0, 0, 512, 256);
+      g.fillStyle = "#1d1d26";
+      const pent = (cx, cy, r, sx) => { g.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / 5; g.lineTo(cx + Math.cos(a) * r * sx, cy + Math.sin(a) * r); } g.closePath(); g.fill(); };
+      for (let k = 0; k < 5; k++) { pent(k * 102.4 + 51, 128, 30, 1); pent(k * 102.4, 52, 22, 1.6); pent(k * 102.4, 204, 22, 1.6); }
+      g.fillRect(0, 0, 512, 12); g.fillRect(0, 244, 512, 12);
+    },
+    basket: (g) => {
+      g.fillStyle = "#e8772e"; g.fillRect(0, 0, 512, 256);
+      for (let i = 0; i < 1500; i++) { g.fillStyle = "rgba(120,40,0,0.18)"; g.fillRect((i * 97) % 512, (i * 53) % 256, 2, 2); }
+      g.strokeStyle = "#2a1408"; g.lineWidth = 6;
+      g.beginPath(); g.moveTo(0, 128); g.lineTo(512, 128); g.stroke();
+      for (const x of [0, 256, 512]) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 256); g.stroke(); }
+      for (const off of [128, 384]) { g.beginPath(); for (let y = 0; y <= 256; y += 4) g.lineTo(off + Math.sin(y / 256 * Math.PI) * 60, y); g.stroke(); }
+    },
+    tennis: (g) => {
+      g.fillStyle = "#cfe83a"; g.fillRect(0, 0, 512, 256);
+      g.strokeStyle = "#ffffff"; g.lineWidth = 12; g.lineCap = "round";
+      g.beginPath(); for (let x = 0; x <= 512; x += 4) g.lineTo(x, 128 + Math.sin(x / 512 * 4 * Math.PI) * 62); g.stroke();
+    },
+    melon: (g) => {
+      g.fillStyle = "#2d8a3a"; g.fillRect(0, 0, 512, 256);
+      g.strokeStyle = "#9ad16b"; g.lineWidth = 12;
+      for (let k = 0; k < 12; k++) { g.beginPath(); for (let y = 0; y <= 256; y += 8) g.lineTo(k * 42.7 + Math.sin(y * 0.12 + k) * 7, y); g.stroke(); }
+    },
+    eight: (g) => {
+      g.fillStyle = "#14141f"; g.fillRect(0, 0, 512, 256);
+      g.fillStyle = "#fff"; g.beginPath(); g.ellipse(384, 128, 40, 48, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#14141f"; g.font = "bold 64px Arial"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("8", 384, 132);
+    },
+    earth: (g) => {
+      g.fillStyle = "#2f7de1"; g.fillRect(0, 0, 512, 256);
+      const r = rngFor(7);
+      for (let c = 0; c < 9; c++) {
+        const cx = r() * 512, cy = 50 + r() * 156;
+        for (let k = 0; k < 14; k++) { g.fillStyle = k % 3 ? "#3fae4f" : "#7cc46a"; g.beginPath(); g.arc(cx + (r() - 0.5) * 70, cy + (r() - 0.5) * 40, 8 + r() * 16, 0, Math.PI * 2); g.fill(); }
+      }
+      g.fillStyle = "#f4fbff"; g.fillRect(0, 0, 512, 20); g.fillRect(0, 236, 512, 20);
+    },
+    smile: (g) => {
+      g.fillStyle = "#ffd23f"; g.fillRect(0, 0, 512, 256);
+      g.fillStyle = "#3a2410";
+      g.beginPath(); g.ellipse(360, 100, 11, 18, 0, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(408, 100, 11, 18, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "#3a2410"; g.lineWidth = 9; g.lineCap = "round";
+      g.beginPath(); g.arc(384, 124, 42, 0.18 * Math.PI, 0.82 * Math.PI); g.stroke();
+      g.fillStyle = "rgba(255,100,120,0.45)"; g.beginPath(); g.arc(336, 140, 12, 0, 7); g.fill(); g.beginPath(); g.arc(432, 140, 12, 0, 7); g.fill();
+    },
+    candy: (g) => {
+      g.fillStyle = "#fff"; g.fillRect(0, 0, 512, 256);
+      g.save(); g.rotate(-0.5);
+      for (let x = -400; x < 800; x += 56) { g.fillStyle = (x / 56) % 2 ? "#ff4d8d" : "#ff9ec4"; g.fillRect(x, -200, 26, 800); }
+      g.restore();
+    },
+    neon: (g) => {
+      g.fillStyle = "#0b0b1e"; g.fillRect(0, 0, 512, 256);
+      g.strokeStyle = "#00e5ff"; g.lineWidth = 4;
+      for (let x = 0; x <= 512; x += 32) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 256); g.stroke(); }
+      g.strokeStyle = "#ff3d9a";
+      for (let y = 0; y <= 256; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); }
+    },
+    lava: (g) => {
+      g.fillStyle = "#1c0805"; g.fillRect(0, 0, 512, 256);
+      const r = rngFor(11);
+      for (let k = 0; k < 40; k++) {
+        let x = r() * 512, y = r() * 256;
+        g.strokeStyle = r() < 0.5 ? "#ff5a00" : "#ffb000"; g.lineWidth = 3 + r() * 5;
+        g.beginPath(); g.moveTo(x, y);
+        for (let s = 0; s < 6; s++) { x += (r() - 0.5) * 60; y += (r() - 0.5) * 40; g.lineTo(x, y); }
+        g.stroke();
+      }
+    },
+    galaxy: (g) => {
+      const gr = g.createLinearGradient(0, 0, 512, 256);
+      gr.addColorStop(0, "#1a0b3d"); gr.addColorStop(0.5, "#3b1677"); gr.addColorStop(1, "#0d1d52");
+      g.fillStyle = gr; g.fillRect(0, 0, 512, 256);
+      const r = rngFor(3);
+      for (let k = 0; k < 8; k++) { g.fillStyle = `rgba(255,${80 + r() * 100 | 0},200,0.18)`; g.beginPath(); g.arc(r() * 512, r() * 256, 30 + r() * 50, 0, 7); g.fill(); }
+      for (let k = 0; k < 260; k++) { g.fillStyle = "#fff"; g.globalAlpha = 0.4 + r() * 0.6; g.fillRect(r() * 512, r() * 256, r() < 0.1 ? 3 : 1.6, r() < 0.1 ? 3 : 1.6); }
+      g.globalAlpha = 1;
+    },
+  };
+  const SKIN_PROPS = {
+    neon: { glow: 1.2, r: 0.3 },
+    lava: { glow: 1.4, r: 0.6 },
+    galaxy: { glow: 0.7, r: 0.2 },
+    eight: { r: 0.08 },
+    classic: { r: 0.22 },
+    smile: { r: 0.3 },
+  };
+  const SKIN_COLOR = { classic: 0xff4f9a, beach: 0xff4d4d, soccer: 0xffffff, basket: 0xe8772e, tennis: 0xcfe83a, melon: 0x2d8a3a, eight: 0x444466, earth: 0x2f7de1, smile: 0xffd23f, candy: 0xff4d8d, chrome: 0xe8eef5, neon: 0x00e5ff, lava: 0xff5a00, gold: 0xffc93c, galaxy: 0x8a5cff };
+  const skinCache = new Map();
+  function skinMaterial(id) {
+    if (skinCache.has(id)) return skinCache.get(id);
+    if (id === "chrome" || id === "gold") {
+      const mc = new THREE.MeshMatcapMaterial({ matcap: id === "gold" ? GOLD_CAP : CHROME_CAP });
+      skinCache.set(id, mc);
+      return mc;
+    }
+    const p = SKIN_PROPS[id] || {}, draw = SKIN_DRAW[id];
+    const m = new THREE.MeshStandardMaterial({ color: p.color ? lc(p.color) : 0xffffff, roughness: p.r ?? 0.35, metalness: p.metal ?? 0 });
+    if (draw) {
+      m.map = canvasTex(512, 256, draw);
+      if (p.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = p.glow; }
+    }
+    skinCache.set(id, m);
+    return m;
+  }
+
+  // 3D thumbnails for the shop, rendered once with a small offscreen renderer.
+  const thumbs = {};
+  let thumbKit = null;
+  function ballThumb(id) {
+    if (thumbs[id]) return thumbs[id];
+    if (!thumbKit) {
+      const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      r.setSize(160, 160); r.setPixelRatio(1); r.outputEncoding = THREE.sRGBEncoding;
+      const s = new THREE.Scene();
+      s.add(new THREE.HemisphereLight(0xffffff, 0x8877aa, 0.75));
+      const d = new THREE.DirectionalLight(0xffffff, 1.2); d.position.set(2, 3, 3); s.add(d);
+      const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 20); cam.position.set(0, 0.35, 3.3); cam.lookAt(0, 0, 0);
+      const m = new THREE.Mesh(GEO.sph, skinMaterial("classic")); m.scale.setScalar(1.55); m.rotation.set(0.25, -0.7, 0); s.add(m);
+      thumbKit = { r, s, cam, m };
+    }
+    thumbKit.m.material = skinMaterial(id);
+    thumbKit.r.render(thumbKit.s, thumbKit.cam);
+    thumbs[id] = thumbKit.r.domElement.toDataURL();
+    return thumbs[id];
+  }
+
+  // ================================================================ particles
+  const PN = 900;
+  const pPos = new Float32Array(PN * 3), pCol = new Float32Array(PN * 3), pVel = new Float32Array(PN * 3);
+  const pBase = new Float32Array(PN * 3), pLife = new Float32Array(PN), pMax = new Float32Array(PN), pGrav = new Float32Array(PN);
+  let pNext = 0;
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3).setUsage(THREE.DynamicDrawUsage));
+  pGeo.setAttribute("color", new THREE.BufferAttribute(pCol, 3).setUsage(THREE.DynamicDrawUsage));
+  const points = new THREE.Points(pGeo, new THREE.PointsMaterial({
+    size: 0.5, map: spriteTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  points.frustumCulled = false;
+  scene.add(points);
+  function emit(x, y, z, vx, vy, vz, r, g, b, life, grav = 0) {
+    const i = pNext; pNext = (pNext + 1) % PN;
+    pPos.set([x, y, z], i * 3); pVel.set([vx, vy, vz], i * 3); pBase.set([r, g, b], i * 3);
+    pLife[i] = pMax[i] = life; pGrav[i] = grav;
+  }
+  function burst(p, n, colorFn, speed, life, grav) {
+    for (let k = 0; k < n; k++) {
+      const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - u * u), sp = speed * (0.4 + Math.random() * 0.6);
+      const [r, g, b] = colorFn(k);
+      emit(p.x, p.y, p.z, s * Math.cos(a) * sp, Math.abs(u) * sp + speed * 0.3, s * Math.sin(a) * sp, r, g, b, life * (0.6 + Math.random() * 0.6), grav);
+    }
+  }
+  function updateParticles(dt) {
+    for (let i = 0; i < PN; i++) {
+      if (pLife[i] <= 0) continue;
+      pLife[i] -= dt;
+      const k = i * 3;
+      if (pLife[i] <= 0) { pCol[k] = pCol[k + 1] = pCol[k + 2] = 0; continue; }
+      pVel[k + 1] -= pGrav[i] * dt;
+      pPos[k] += pVel[k] * dt; pPos[k + 1] += pVel[k + 1] * dt; pPos[k + 2] += pVel[k + 2] * dt;
+      const f = pLife[i] / pMax[i];
+      pCol[k] = pBase[k] * f; pCol[k + 1] = pBase[k + 1] * f; pCol[k + 2] = pBase[k + 2] * f;
+    }
+    pGeo.attributes.position.needsUpdate = true;
+    pGeo.attributes.color.needsUpdate = true;
+  }
+  const hsl = new THREE.Color();
+  const TRAIL_COLOR = {
+    cloud: () => [0.3, 0.32, 0.36],
+    rainbow: t => { hsl.setHSL((t * 0.6) % 1, 1, 0.55); return [hsl.r, hsl.g, hsl.b]; },
+    fire: () => { const r = Math.random(); return [1, 0.35 + r * 0.45, r * 0.1]; },
+    stars: () => Math.random() < 0.5 ? [1, 0.85, 0.3] : [1, 1, 1],
+    neon: t => (Math.floor(t * 10) % 2 ? [0, 0.9, 1] : [1, 0.24, 0.6]),
+    sparkle: () => { hsl.setHSL(Math.random(), 1, 0.6); return [hsl.r, hsl.g, hsl.b]; },
+  };
+
+  // ================================================================ ball
+  const ball = new THREE.Group();
+  const ballMesh = new THREE.Mesh(GEO.sph, skinMaterial(save.ball));
+  ballMesh.castShadow = true;
+  ball.add(ballMesh);
+  scene.add(ball);
+
+  // ================================================================ path (twisting road)
+  let path = null;
+  const _P = new THREE.Vector3(), _Q = new THREE.Quaternion(), _v = new THREE.Vector3();
+  function frameAt(s, P = _P, Q = _Q) {
+    const f = clamp((s - path.sMin) / STEP, 0, path.n - 1.0001);
+    const i = Math.floor(f), t = f - i, k = i * 3;
+    P.set(lerp(path.p[k], path.p[k + 3], t), lerp(path.p[k + 1], path.p[k + 4], t), lerp(path.p[k + 2], path.p[k + 5], t));
+    Q.copy(path.q[i]).slerp(path.q[i + 1], t);
+    return P;
+  }
+  function toWorld(x, y, s, out = new THREE.Vector3(), Q = _Q) {
+    frameAt(s, _P, Q);
+    return out.set(x, y, 0).applyQuaternion(Q).add(_P);
+  }
+
+  function planSections(level, rnd, endS) {
+    const range = (a, b) => a + rnd() * (b - a);
+    const diff = levelDiff(level);
+    const secs = [{ type: "straight", s0: -80, s1: SAFE + 8 }];
+    // Every level opens with a showcase: turn, corkscrew, hill, loop, S-waves.
+    const forced = ["curve", "twist", "hill", "loop", "wave"];
+    let s = SAFE + 8, lastSpecial = false, idx = 0;
+    while (s < endS) {
+      let type;
+      if (idx < forced.length) type = forced[idx];
+      else {
+        const opts = [["straight", 1], ["curve", 3.5], ["hill", 2], ["wave", 2.5]];
+        if (!lastSpecial) {
+          opts.push(["twist", 2.5 + diff * 2], ["loop", 1.6 + diff * 1.5]);
+          if (level >= 2) opts.push(["helix", 1.2 + diff]);
+        }
+        let r = rnd() * opts.reduce((a, o) => a + o[1], 0);
+        type = "straight";
+        for (const [t, w] of opts) { r -= w; if (r <= 0) { type = t; break; } }
+      }
+      idx++;
+      const turns = type === "twist" && level >= 4 && rnd() < 0.4 ? 2 : 1;
+      let len = { straight: range(12, 24), curve: range(35, 60), hill: range(45, 70), wave: range(60, 90), twist: range(55, 75) * (turns === 2 ? 1.5 : 1), loop: 64, helix: range(120, 150) }[type];
+      if (isSpecial(type) && s + len > endS - 30) { type = "curve"; len = 45; }
+      const sec = { type, s0: s, s1: s + len, turns };
+      if (type === "curve") { sec.total = range(0.6, 1.4); sec.bank = range(0.25, 0.5); }
+      if (type === "hill") sec.amp = range(0.15, 0.3) * (rnd() < 0.5 ? 1 : -1);
+      if (type === "wave") sec.amp = range(0.3, 0.5) * (rnd() < 0.5 ? 1 : -1);
+      if (isSpecial(type)) sec.sign = rnd() < 0.5 ? 1 : -1;
+      secs.push(sec);
+      lastSpecial = isSpecial(type);
+      s += len;
+    }
+    secs.push({ type: "straight", s0: s, s1: Infinity });
+    return secs;
+  }
+
+  function buildPath(secs, sMax) {
+    const sMin = -80, n = Math.ceil((sMax - sMin) / STEP) + 2;
+    const p = new Float32Array(n * 3), q = new Array(n);
+    const P = new THREE.Vector3(0, 0, sMin), Q = new THREE.Quaternion();
+    const dq = new THREE.Quaternion(), fwd = new THREE.Vector3();
+    const AX = new THREE.Vector3(1, 0, 0), AY = new THREE.Vector3(0, 1, 0), AZ = new THREE.Vector3(0, 0, 1);
+    let si = 0;
+    for (let i = 0; i < n; i++) {
+      const s = sMin + i * STEP;
+      p[i * 3] = P.x; p[i * 3 + 1] = P.y; p[i * 3 + 2] = P.z;
+      q[i] = Q.clone();
+      while (secs[si].s1 <= s) si++;
+      const sec = secs[si], L = sec.s1 - sec.s0, t = (s - sec.s0) / L;
+      if (sec.type === "curve") {
+        if (sec.sign === undefined) {
+          fwd.set(0, 0, 1).applyQuaternion(Q);
+          const heading = Math.atan2(fwd.x, fwd.z);
+          sec.sign = Math.abs(heading) > 0.5 ? -Math.sign(heading) : (Math.sin(s * 12.9898) > 0 ? 1 : -1);
+        }
+        Q.premultiply(dq.setFromAxisAngle(AY, sec.sign * sec.total * (Math.PI / 2) / L * Math.sin(Math.PI * t) * STEP));
+        Q.multiply(dq.setFromAxisAngle(AZ, -sec.sign * sec.bank * Math.PI / L * Math.cos(Math.PI * t) * STEP));
+      } else if (sec.type === "hill") {
+        Q.multiply(dq.setFromAxisAngle(AX, sec.amp * 2 * Math.PI / L * Math.cos(2 * Math.PI * t) * STEP));
+      } else if (sec.type === "twist") {
+        Q.multiply(dq.setFromAxisAngle(AZ, sec.sign * sec.turns * 2 * Math.PI / L * (1 - Math.cos(2 * Math.PI * t)) * STEP));
+      } else if (sec.type === "wave") {
+        const yr = sec.amp * 4 * Math.PI / L * Math.cos(4 * Math.PI * t) * STEP;
+        Q.premultiply(dq.setFromAxisAngle(AY, yr));
+        Q.multiply(dq.setFromAxisAngle(AZ, -yr * 0.9));
+      } else if (sec.type === "helix") {
+        // A full 360° spiral that climbs so it passes over its own entry.
+        const w = (1 - Math.cos(2 * Math.PI * t)) / L * STEP;
+        Q.premultiply(dq.setFromAxisAngle(AY, sec.sign * 2 * Math.PI * w));
+        Q.multiply(dq.setFromAxisAngle(AZ, -sec.sign * 0.4 * Math.PI / L * Math.cos(Math.PI * t) * STEP));
+        Q.multiply(dq.setFromAxisAngle(AX, -0.075 * Math.PI / L * Math.cos(Math.PI * t) * STEP));
+      } else if (sec.type === "loop") {
+        if (!sec.shift) sec.shift = new THREE.Vector3(1, 0, 0).applyQuaternion(Q).setY(0).normalize().multiplyScalar(sec.sign * (TRACK_W + 3));
+        const w = (1 - Math.cos(2 * Math.PI * t)) / L * STEP;
+        Q.multiply(dq.setFromAxisAngle(AX, -2 * Math.PI * w));
+        P.addScaledVector(sec.shift, w);
+      }
+      Q.normalize();
+      P.addScaledVector(fwd.set(0, 0, 1).applyQuaternion(Q), STEP);
+    }
+    let minY = Infinity;
+    for (let i = 0; i < n; i++) minY = Math.min(minY, p[i * 3 + 1]);
+    return { sMin, n, p, q, minY };
+  }
+
+  // ================================================================ level builder
+  function buildLevel(level) {
+    const rnd = rngFor(level * 7919 + 1337);
+    const range = (a, b) => a + rnd() * (b - a);
+    const ri = n => Math.floor(rnd() * n);
+    const pick1 = arr => arr[ri(arr.length)];
+    const diff = levelDiff(level);
+    const g = new THREE.Group();
+    const w = { level, group: g, boxes: [], movers: [], sweepers: [], coins: [], gaps: [], disposables: [] };
+
+    const length = Math.min(420 + (level - 1) * 25, 1100);
+    const finishZ = SAFE + length;
+    const cell = TRACK_W / 8;
+    w.finishLine = finishZ + cell;
+    w.baseSpeed = levelSpeed(level);
+
+    const regions = Math.min(5, 3 + Math.floor(((level - 1) % LEVELS_PER_WORLD) / 4));
+    const world0 = worldOf(level);
+    w.regionLen = (w.finishLine + 10) / regions;
+    w.biomes = Array.from({ length: regions }, (_, i) => BIOMES[(world0 + i) % BIOMES.length]);
+    const biomeAt = s => w.biomes[clamp(Math.floor(s / w.regionLen), 0, regions - 1)];
+
+    w.sections = planSections(level, rnd, finishZ);
+    path = buildPath(w.sections, w.finishLine + RUNOUT + 60);
+    w.groundY = path.minY - 10;
+    const specialIn = (a, b) => w.sections.find(sc => isSpecial(sc.type) && sc.s0 < b + 3 && sc.s1 > a - 3);
+    // While the road spins (corkscrew, loop, spiral) the camera spins too and obstacles are hard to
+    // read, so those stretches only carry coins. A short clear run-out follows so the view can settle.
+    const noObstaclesIn = (a, b) => w.sections.find(sc => isSpecial(sc.type) && sc.s0 < b + 3 && sc.s1 > a - 3);
+
+    // ---- placement helpers
+    const place = (obj, x, y, s) => { const Q = new THREE.Quaternion(); toWorld(x, y, s, obj.position, Q); obj.quaternion.copy(Q); g.add(obj); return obj; };
+    const box = (x, y, s, sx, sy, sz, material, shadow = true) => {
+      const m = new THREE.Mesh(GEO.box, material);
+      m.scale.set(sx, sy, sz); m.castShadow = shadow; m.receiveShadow = true;
+      return place(m, x, y, s);
+    };
+    const obstacle = (x, y, z, sx, sy, sz, material) => {
+      const m = box(x, y, z, sx, sy, sz, material);
+      const bx = { x, y, z, hx: sx / 2, hy: sy / 2, hz: sz / 2 };
+      w.boxes.push(bx);
+      return { m, bx };
+    };
+    const coin = (x, y, z) => {
+      const holder = new THREE.Group(), spin = new THREE.Group();
+      const c = new THREE.Mesh(GEO.coin, coinMat);
+      c.rotation.x = Math.PI / 2; c.castShadow = true;
+      spin.add(c); holder.add(spin);
+      place(holder, x, y, z);
+      w.coins.push({ x, y, z, obj: holder, spin, alive: true });
+    };
+    const coinLine = (lane, a, b, step = COIN_STEP) => { for (let z = a; z <= b + 0.01; z += step) coin(laneX(lane), COIN_Y, z); };
+    const coinArc = (lane, cz, half, h) => {
+      for (let i = 0; i < 7; i++) { const t = -1 + (2 * i) / 6; coin(laneX(lane), COIN_Y + h * (1 - t * t), cz + t * half); }
+    };
+    const wallMat = z => stripeMat(biomeAt(z).obstacle);
+    const hurdleMat = z => stripeMat(biomeAt(z).hazard, "#2b2340");
+    const wall = (lane, z) => obstacle(laneX(lane), 0.8, z + 0.5, LANE_W - 0.25, 1.6, 1, wallMat(z));
+    const mover = (z, phase) => {
+      const o = obstacle(0, 0.7, z + 0.6, LANE_W - 0.4, 1.4, 1.2, stripeMat(biomeAt(z).hazard));
+      const P = new THREE.Vector3(), Q = new THREE.Quaternion();
+      frameAt(z + 0.6, P, Q);
+      w.movers.push({ ...o, P, Q, amp: LANE_W, speed: lerp(1.8, 3.4, diff), phase });
+    };
+    // Piston: a wall that rises and drops in its lane. Pass underneath when it is up.
+    const piston = (lane, z, phase, speed) => {
+      const o = obstacle(laneX(lane), 0.8, z + 0.5, LANE_W - 0.3, 1.6, 1, stripeMat(biomeAt(z).obstacle, "#2b2340"));
+      const P = new THREE.Vector3(), Q = new THREE.Quaternion();
+      frameAt(z + 0.5, P, Q);
+      w.movers.push({ ...o, P, Q, axis: "y", base: 0.8, amp: 2, speed, phase });
+    };
+    const otherLane = l => (l + 1 + ri(LANES - 1)) % LANES;
+
+    // ---- obstacle patterns
+    const pick = last => {
+      const opts = [];
+      const add = (p, wt) => opts.push([p, p === last ? wt * 0.35 : wt]);
+      add("wall", 2.5); add("double", 3); add("hurdle", 2); add("gap", 2.5); add("mover", 2);
+      if (level >= 2) { add("sweeper", 2); add("combo", 2.2); }
+      if (level >= 3) add("zigzag", 2.2);
+      if (level >= 4) add("pistons", 2);
+      if (level >= 5) add("twomovers", 1.6);
+      let r = rnd() * opts.reduce((s, o) => s + o[1], 0);
+      for (const [p, wt] of opts) { r -= wt; if (r <= 0) return p; }
+      return opts[opts.length - 1][0];
+    };
+    const vAt = z => w.baseSpeed * (1 + SPEED_RAMP * z / w.finishLine);
+    const placePattern = (p, z) => {
+      switch (p) {
+        case "wall": { const b = ri(3); wall(b, z); coinLine(otherLane(b), z - 7.5, z + 1.5); return 1; }
+        case "double": { const open = ri(3); for (let l = 0; l < 3; l++) if (l !== open) wall(l, z); coinLine(open, z - 7.5, z + 1.5); return 1; }
+        case "hurdle": { obstacle(0, 0.2, z + 0.2, TRACK_W - 0.6, 0.4, 0.38, hurdleMat(z)); coinArc(ri(3), z + 0.25, 3, 1); return 0.5; }
+        case "gap": { const len = lerp(3.6, 5.6, diff); w.gaps.push([z, z + len]); coinArc(ri(3), z + len / 2, len / 2 + 1.5, 1); return len; }
+        case "pistons": {
+          const ph = range(0, 6.28), sp = lerp(2.2, 3.4, diff);
+          for (let l = 0; l < 3; l++) piston(l, z, ph + l * 2.1, sp);
+          return 1;
+        }
+        case "mover": mover(z, range(0, Math.PI * 2)); return 1.2;
+        case "twomovers": { const ph = range(0, 6.28), d = Math.max(6, vAt(z) * 0.45); mover(z, ph); mover(z + d, ph + Math.PI); return d + 1.2; }
+        case "combo": {
+          const open = ri(3);
+          for (let l = 0; l < 3; l++) if (l !== open) wall(l, z);
+          // Switch lanes first, then jump: the low bar sits a little after the walls.
+          const hz = z + 0.5 + Math.max(4, vAt(z) * 0.3);
+          obstacle(laneX(open), 0.2, hz, LANE_W - 0.3, 0.4, 0.38, hurdleMat(z));
+          coinArc(open, hz, 3, 1);
+          return hz - z + 0.5;
+        }
+        case "zigzag": {
+          let l = ri(3); const dir = rnd() < 0.5 ? 1 : 2, d = Math.max(6.5, vAt(z) * 0.5);
+          for (let k = 0; k < 3; k++) { wall(l, z + k * d); l = (l + dir) % 3; }
+          return 2 * d + 1;
+        }
+        case "sweeper": {
+          const th = biomeAt(z), r = LANE_W * 1.5 + 0.35;
+          const piv = place(new THREE.Group(), 0, 0, z + r);
+          const spinner = new THREE.Group();
+          piv.add(spinner);
+          const bar = new THREE.Mesh(GEO.box, stripeMat(th.hazard, "#ffffff")); bar.position.y = 0.35; bar.scale.set(r * 2, 0.3, 0.3); bar.castShadow = true;
+          const post = new THREE.Mesh(GEO.cyl, mat(th.obstacle)); post.position.y = 0.35; post.scale.set(0.5, 0.7, 0.5); post.castShadow = true;
+          spinner.add(bar, post);
+          const s = { spinner, z: z + r, r, angle: range(0, Math.PI), speed: (lerp(90, 170, diff) * Math.PI / 180) * (ri(2) ? 1 : -1) };
+          spinner.rotation.y = s.angle;
+          w.sweepers.push(s);
+          return r * 2;
+        }
+      }
+      return 1;
+    };
+
+    // Gap between obstacles in seconds of travel, so it stays fair at any speed but keeps shrinking.
+    const gapTime = lerp(1.25, 0.72, diff);
+    let z = SAFE, last = null;
+    while (z < finishZ - 16) {
+      const sp = noObstaclesIn(z, z + 15);
+      if (sp) { coinLine(1, Math.max(z, sp.s0 + 3), sp.s1 - 3, 2.2); z = sp.s1 + Math.max(10, vAt(sp.s1) * 0.9); continue; }
+      const p = pick(last); last = p;
+      const used = placePattern(p, z);
+      const v = w.baseSpeed * (1 + SPEED_RAMP * z / w.finishLine);
+      const next = z + used + Math.max(9, v * gapTime) * range(0.85, 1.15);
+      if (rnd() < 0.55) coinLine(ri(3), z + used + 2.5, Math.min(next - 9, finishZ - 2));
+      z = next;
+    }
+    w.totalCoins = w.coins.length;
+
+    // ---- road ribbon with lips, sides, underside and neon edge strips
+    const roadPos = [], roadCol = [], glowPos = [], glowCol = [];
+    const W2 = TRACK_W / 2, LIP = 0.35, BOT = -0.7;
+    const XS = [[-W2 - LIP, 0.3], [-W2, 0.3], [-W2, 0], [W2, 0], [W2, 0.3], [W2 + LIP, 0.3], [W2 + LIP, BOT], [-W2 - LIP, BOT]];
+    const GL = [[-W2 - 0.27, -W2 - 0.08], [W2 + 0.08, W2 + 0.27]];
+    const pushTri = (arrP, arrC, a, b, c, col) => {
+      arrP.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+      for (let i = 0; i < 3; i++) arrC.push(col.r, col.g, col.b);
+    };
+    const pushQuad = (arrP, arrC, a, b, c, d, col) => { pushTri(arrP, arrC, a, b, c, col); pushTri(arrP, arrC, a, c, d, col); };
+    const frameCopy = s => { const Q = new THREE.Quaternion(); frameAt(s, _P, Q); return { P: _P.clone(), Q }; };
+    const lv = (f, x, y) => new THREE.Vector3(x, y, 0).applyQuaternion(f.Q).add(f.P);
+    const colA = new THREE.Color(), colB = new THREE.Color(), colE = new THREE.Color(), colS = new THREE.Color(), colU = new THREE.Color(), colG = new THREE.Color();
+    const capAt = s => {
+      const f = frameCopy(s), col = lc(biomeAt(s).edge).multiplyScalar(0.8);
+      pushQuad(roadPos, roadCol, lv(f, -W2 - LIP, BOT), lv(f, W2 + LIP, BOT), lv(f, W2 + LIP, 0), lv(f, -W2 - LIP, 0), col);
+      pushQuad(roadPos, roadCol, lv(f, -W2 - LIP, 0), lv(f, -W2, 0), lv(f, -W2, 0.3), lv(f, -W2 - LIP, 0.3), col);
+      pushQuad(roadPos, roadCol, lv(f, W2, 0), lv(f, W2 + LIP, 0), lv(f, W2 + LIP, 0.3), lv(f, W2, 0.3), col);
+    };
+    const roadSegment = (a, b) => {
+      if (b - a < 0.05) return;
+      const ss = [a];
+      for (let s = Math.ceil(a / 0.5) * 0.5; s < b - 1e-3; s += 0.5) if (s > a + 1e-3) ss.push(s);
+      ss.push(b);
+      let pf = frameCopy(a), prev = XS.map(([x, y]) => lv(pf, x, y));
+      let prevG = GL.map(([x0, x1]) => [lv(pf, x0, 0.31), lv(pf, x1, 0.31)]);
+      for (let i = 1; i < ss.length; i++) {
+        const f = frameCopy(ss[i]);
+        const cur = XS.map(([x, y]) => lv(f, x, y));
+        const curG = GL.map(([x0, x1]) => [lv(f, x0, 0.31), lv(f, x1, 0.31)]);
+        const mid = (ss[i - 1] + ss[i]) / 2, th = biomeAt(mid), idx = Math.floor(mid / TILE);
+        colA.copy(lc(((idx % 2) + 2) % 2 === 0 ? th.gA : th.gB));
+        colE.copy(lc(th.edge)); colS.copy(colE).multiplyScalar(0.78); colU.copy(colE).multiplyScalar(0.5);
+        for (let e = 0; e < 8; e++) {
+          const e2 = (e + 1) % 8;
+          const col = e === 2 ? colA : e === 6 ? colU : (e === 5 || e === 7) ? colS : colE;
+          pushQuad(roadPos, roadCol, prev[e], prev[e2], cur[e2], cur[e], col);
+        }
+        colG.copy(lc(th.glow)).multiplyScalar(1.3);
+        for (let k = 0; k < 2; k++) pushQuad(glowPos, glowCol, prevG[k][0], prevG[k][1], curG[k][1], curG[k][0], colG);
+        prev = cur; prevG = curG;
+      }
+      capAt(a); capAt(b);
+    };
+    w.gaps.sort((a, b) => a[0] - b[0]);
+    const roadRuns = [];
+    let cur = -RUNUP;
+    for (const [a, b] of w.gaps) { roadRuns.push([cur, a]); cur = b; }
+    roadRuns.push([cur, w.finishLine + RUNOUT]);
+    for (const [a, b] of roadRuns) roadSegment(a, b);
+    const mkMesh = (pos, col, material) => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
+      geo.computeVertexNormals();
+      w.disposables.push(geo);
+      const m = new THREE.Mesh(geo, material);
+      g.add(m);
+      return m;
+    };
+    mkMesh(roadPos, roadCol, roadMat).receiveShadow = true;
+    mkMesh(glowPos, glowCol, glowMat);
+
+    // ---- instanced extras: lane dashes, support pillars, scenery
+    const inst = new Map();
+    const addM = (kind, m4, hex) => { if (!inst.has(kind)) inst.set(kind, []); inst.get(kind).push([m4, hex]); };
+    const iq = new THREE.Quaternion(), ie = new THREE.Euler(), iv = new THREE.Vector3(), isc = new THREE.Vector3();
+    const add = (kind, x, y, zz, sx, sy, sz, hex, ry = 0, rz = 0) =>
+      addM(kind, new THREE.Matrix4().compose(iv.set(x, y, zz), iq.setFromEuler(ie.set(0, ry, rz)), isc.set(sx, sy, sz)), hex);
+
+    for (const [a, b] of roadRuns) {
+      for (let s = Math.ceil(a / 3) * 3 + 0.8; s < b - 0.8; s += 3) {
+        const f = frameCopy(s);
+        for (const x of [LANE_W / 2, -LANE_W / 2]) addM("dash", new THREE.Matrix4().compose(lv(f, x, 0.012), f.Q, isc.set(0.14, 0.02, 1.4)), biomeAt(s).edge);
+      }
+    }
+    const upV = new THREE.Vector3();
+    for (let s = 6; s < w.finishLine + RUNOUT; s += 22) {
+      if (specialIn(s - 4, s + 4) || w.gaps.some(gp => s > gp[0] - 2 && s < gp[1] + 2)) continue;
+      const f = frameCopy(s);
+      if (upV.set(0, 1, 0).applyQuaternion(f.Q).y < 0.9) continue;
+      const base = lv(f, 0, BOT), h = base.y - w.groundY;
+      if (h < 2) continue;
+      add("pillar", base.x, w.groundY + h / 2, base.z, 1.1, h, 1.1, shadeHex(biomeAt(s).edge, 0.85).replace("#", "0x") * 1);
+      add("box", base.x, base.y - 0.2, base.z, TRACK_W * 0.6, 0.4, 1.6, biomeAt(s).edge);
+    }
+
+    const hs = [];
+    for (let i = 0; i < path.n; i += 12) hs.push(path.p[i * 3], path.p[i * 3 + 2]);
+    const clear = (x, zz, r) => {
+      const rr = (r + 7) * (r + 7);
+      for (let i = 0; i < hs.length; i += 2) { const dx = x - hs[i], dz = zz - hs[i + 1]; if (dx * dx + dz * dz < rr) return false; }
+      return true;
+    };
+    const gy = w.groundY;
+    const rightH = new THREE.Vector3(1, 0, 0);
+    const spot = (s, side, dist) => {
+      const Q = new THREE.Quaternion(); frameAt(s, _P, Q);
+      const rv = _v.set(1, 0, 0).applyQuaternion(Q); rv.y = 0;
+      if (rv.lengthSq() > 0.05) rightH.copy(rv.normalize());
+      return { x: _P.x + rightH.x * side * dist, z: _P.z + rightH.z * side * dist, y: _P.y, ry: Math.atan2(rightH.x, rightH.z) };
+    };
+    const tree = (x, zz, h) => {
+      add("trunk", x, gy + h * 0.3, zz, 0.8, h * 0.6, 0.8, 0x7a4b2a);
+      const r = h * 0.28, greens = [0x2e9e48, 0x45b649, 0x1f7a3a, 0x6cc24a];
+      add("blob", x, gy + h * 0.68, zz, r, r * 0.85, r, pick1(greens), range(0, 6));
+      add("blob", x + r * 0.3, gy + h * 0.9, zz - r * 0.2, r * 0.7, r * 0.6, r * 0.7, pick1(greens), range(0, 6));
+    };
+    const pine = (x, zz, h, snow) => {
+      add("trunk", x, gy + h * 0.1, zz, 0.6, h * 0.2, 0.6, 0x6b4428);
+      add("cone", x, gy + h * 0.58, zz, h * 0.27, h * 0.8, h * 0.27, snow ? 0x2f6b4f : pick1([0x2a7a46, 0x226b3c, 0x35884f]));
+      if (snow) add("cone", x, gy + h * 0.86, zz, h * 0.13, h * 0.26, h * 0.13, 0xffffff);
+    };
+    const mountain = (x, zz, r, h, hex) => {
+      add("cone", x, gy + h / 2, zz, r, h, r, hex, range(0, 6));
+      add("cone", x, gy + h * 0.82, zz, r * 0.37, h * 0.36, r * 0.37, 0xffffff);
+    };
+    const NEAR = {
+      "Jungle": (x, zz) => {
+        const k = rnd();
+        if (k < 0.72) { const h = range(9, 18); if (clear(x, zz, h * 0.28)) tree(x, zz, h); }
+        else if (k < 0.9) { const s = range(2, 4); if (clear(x, zz, s)) add("ball", x, gy + s * 0.4, zz, s, s * 0.7, s, pick1([0x3fae4f, 0x2c8f43])); }
+        else { const s = range(1.5, 3); if (clear(x, zz, s)) add("blob", x, gy + s * 0.5, zz, s, s * 0.8, s, 0x8d8a80, range(0, 6)); }
+      },
+      "Mountains": (x, zz) => {
+        if (rnd() < 0.75) { const h = range(8, 15); if (clear(x, zz, h * 0.27)) pine(x, zz, h, false); }
+        else { const s = range(2, 4); if (clear(x, zz, s)) add("blob", x, gy + s * 0.5, zz, s, s * 0.8, s, 0x9097a8, range(0, 6)); }
+      },
+      "Neon City": (x, zz, ry) => {
+        const bw = range(6, 11), bd = range(6, 11), h = range(14, 52);
+        if (!clear(x, zz, Math.max(bw, bd) * 0.72)) return;
+        add("bld", x, gy + h / 2, zz, bw, h, bd, pick1([0x8c7ae6, 0x6c5ce7, 0xa29bfe, 0x74b9ff, 0xfd79a8, 0x81ecec]), ry);
+        if (rnd() < 0.5) add("box", x, gy + h + 1, zz, bw * 0.45, 2, bd * 0.45, 0x3d3a5c, ry);
+        if (rnd() < 0.25) add("box", x, gy + h + 5, zz, 0.3, 8, 0.3, 0xff3d9a, ry);
+      },
+      "Desert": (x, zz) => {
+        if (rnd() < 0.55) {
+          const h = range(4, 7); if (!clear(x, zz, 2)) return;
+          add("trunk", x, gy + h / 2, zz, 1, h, 1, 0x3c9d5d);
+          add("trunk", x + 1.1, gy + h * 0.55, zz, 0.7, 1.4, 0.7, 0x3c9d5d, 0, Math.PI / 2);
+          add("trunk", x + 1.8, gy + h * 0.55 + 1, zz, 0.7, 2, 0.7, 0x3c9d5d);
+        } else {
+          const s = range(8, 16); if (!clear(x, zz, s)) return;
+          add("ball", x, gy, zz, s, range(2.5, 5), s * range(0.6, 1), pick1([0xf0c27b, 0xe8b46a, 0xf5d090]), range(0, 6));
+        }
+      },
+      "Snow Peaks": (x, zz) => {
+        const k = rnd();
+        if (k < 0.6) { const h = range(8, 14); if (clear(x, zz, h * 0.27)) pine(x, zz, h, true); }
+        else if (k < 0.85) { const h = range(6, 13); if (clear(x, zz, 2)) add("pyr", x, gy + h / 2, zz, 1.6, h, 1.6, 0xa8e0ff, range(0, 6)); }
+        else if (clear(x, zz, 2)) {
+          add("ball", x, gy + 1.4, zz, 1.4, 1.4, 1.4, 0xffffff);
+          add("ball", x, gy + 3.4, zz, 1, 1, 1, 0xffffff);
+          add("box", x, gy + 4.6, zz, 1.1, 0.8, 1.1, 0x2a2a3a);
+        }
+      },
+    };
+    const FAR = {
+      "Jungle": (x, zz) => { const s = range(18, 30); if (clear(x, zz, s)) add("ball", x, gy, zz, s, range(10, 20), s, pick1([0x2f8f46, 0x3fa356, 0x247a3b])); },
+      "Mountains": (x, zz) => { const r = range(22, 42); if (clear(x, zz, r)) mountain(x, zz, r, range(45, 90), pick1([0x6b7aa8, 0x7d8bb5, 0x5c6b94])); },
+      "Neon City": (x, zz, ry) => { const bw = range(10, 18); if (clear(x, zz, bw)) { const h = 80 + range(0, 40); add("bld", x, gy + h / 2, zz, bw, h, bw, pick1([0x4b3f9e, 0x5a4fb8, 0x3c3584]), ry); } },
+      "Desert": (x, zz) => { const r = range(14, 26); if (clear(x, zz, r)) { const h = r * range(1, 1.3); add("pyr", x, gy + h / 2, zz, r, h, r, pick1([0xe0a95b, 0xd99a4a]), range(0, 1.5)); } },
+      "Snow Peaks": (x, zz) => { const r = range(24, 44); if (clear(x, zz, r)) mountain(x, zz, r, range(50, 100), pick1([0xc9dcf5, 0xb4c9ea, 0xdce8fa])); },
+    };
+    for (let k = 0; k < regions; k++) {
+      const bm = w.biomes[k];
+      const s0 = k * w.regionLen - (k === 0 ? 60 : 0);
+      const s1 = (k + 1) * w.regionLen + (k === regions - 1 ? RUNOUT + 60 : 0);
+      for (let s = s0; s < s1; s += range(3.5, 6.5))
+        for (const side of [-1, 1]) if (rnd() < 0.85) { const p = spot(s, side, range(10, 34)); NEAR[bm.name](p.x, p.z, p.ry); }
+      for (let s = s0; s < s1; s += range(22, 36))
+        for (const side of [-1, 1]) { const p = spot(s, side, range(55, 140)); FAR[bm.name](p.x, p.z, p.ry); }
+      for (let s = s0; s < s1; s += range(35, 60)) {
+        const p = spot(s, rnd() < 0.5 ? -1 : 1, range(30, 110));
+        add("ball", p.x, p.y + range(22, 50), p.z, range(7, 12), range(2, 3.5), range(4, 7), 0xffffff);
+      }
+    }
+    for (const [kind, items] of inst) {
+      const material = kind === "bld" ? bldMat : kind === "dash" ? dashMat : scnMat;
+      const im = new THREE.InstancedMesh(SCN_GEO[kind], material, items.length);
+      items.forEach(([m, hex], i) => { im.setMatrixAt(i, m); im.setColorAt(i, lc(hex)); });
+      im.instanceMatrix.needsUpdate = true;
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      im.frustumCulled = false;
+      im.receiveShadow = kind === "dash" || kind === "box";
+      g.add(im);
+    }
+
+    // ---- finish gate
+    const fin = biomeAt(finishZ);
+    box(0, 0.03, finishZ + cell, TRACK_W, 0.05, cell * 2, checkerMat, false);
+    for (const sd of [-1, 1]) box(sd * (W2 + 0.75), 2.4, w.finishLine, 0.7, 4.8, 0.7, stripeMat(fin.hazard, "#ffffff"));
+    box(0, 4.7, w.finishLine, TRACK_W + 2.2, 1, 0.5, checkerMat);
+
+    scene.add(g);
+    return w;
+  }
+
+  // ================================================================ game state
+  let world = null, state = "menu", prevState = "ready", stateAt = 0;
+  let level = 1, runCoins = 0, simT = 0, region = 0, toastTimer = 0, revived = false, failsHere = 0, failsLevel = 0;
+  let trialSkin = null, shake = 0, orbit = 0, lastReward = 0, adOpen = false, tripleUsed = false, reviveTimer = 0;
+  const b = {};
+  const speedAt = s => world.baseSpeed * (1 + SPEED_RAMP * clamp(s / world.finishLine, 0, 1));
+
+  function resetBall() {
+    Object.assign(b, {
+      x: laneX(1), y: R, z: 0, vx: 0, vy: 0, vz: 0, lane: 1,
+      running: false, dead: false, fallen: false, fallWall: Infinity,
+      lastG: -1e9, jumpReq: -1e9, invuln: -1, squash: 0, airborne: false,
+    });
+    ballMesh.quaternion.identity();
+  }
+
+  function loadLevel(n) {
+    level = Math.max(1, n);
+    if (world) { scene.remove(world.group); world.disposables.forEach(d => d.dispose()); }
+    world = buildLevel(level);
+    resetBall();
+    runCoins = 0; region = 0; revived = false; trialSkin = null; tripleUsed = false;
+    ballMesh.material = skinMaterial(save.ball);
+    applyBiome(0);
+    snapCamera();
+  }
+
+  // ================================================================ screens
+  const screens = [...document.querySelectorAll(".screen")];
+  function showScreen(id) { for (const s of screens) s.hidden = s.id !== id; }
+  let snackT = 0;
+  function snack(msg) {
+    const el = $("snack"); el.textContent = msg; el.classList.add("show");
+    clearTimeout(snackT); snackT = setTimeout(() => el.classList.remove("show"), 1900);
+  }
+  function updateCoins() { document.querySelectorAll(".coinsVal").forEach(e => { e.textContent = save.coins.toLocaleString(); }); }
+  function addCoins(n) { save.coins = Math.max(0, save.coins + n); persist(); updateCoins(); }
+  const starSvg = on => `<svg viewBox="0 0 24 24"><path d="M12 2.3l2.9 6.2 6.8.8-5 4.7 1.3 6.7L12 17.4l-6 3.3 1.3-6.7-5-4.7 6.8-.8z" fill="${on ? "#ffc928" : "#e2dcf5"}" stroke="${on ? "#d99a00" : "#cfc6ee"}" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+  const lockSvg = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="10" width="14" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';
+  const playSvg = '<svg viewBox="0 0 10 10" fill="currentColor"><path d="M2 1l7 4-7 4z"/></svg>';
+
+  function go(id) {
+    SFX.click();
+    if (id === "home") { goHome(); return; }
+    if (id === "map") renderMap();
+    if (id === "shop") renderShop();
+    if (id === "daily") renderDaily();
+    if (id === "spin") renderSpin();
+    if (id === "settings") renderSettings();
+    showScreen(id);
+  }
+  document.addEventListener("click", e => { const t = e.target.closest("[data-go]"); if (t) go(t.dataset.go); });
+
+  function goHome() {
+    clearInterval(reviveTimer);
+    $("hud").hidden = true;
+    if (!world || state !== "menu" || world.level !== save.maxLevel) loadLevel(save.maxLevel);
+    state = "menu";
+    renderHome();
+    showScreen("home");
+  }
+  function renderHome() {
+    updateCoins();
+    $("playLvl").textContent = "LEVEL " + save.maxLevel;
+    $("homeWorld").textContent = `World ${worldOf(save.maxLevel) + 1} · ${BIOMES[worldOf(save.maxLevel)].name}`;
+    $("dailyDot").hidden = dailyStatus().claimed;
+    $("spinDot").hidden = save.spinFree === today();
+  }
+
+  function startLevel(n) {
+    clearInterval(reviveTimer);
+    if (n !== failsLevel) { failsLevel = n; failsHere = 0; }
+    loadLevel(n);
+    state = "ready";
+    $("hud").hidden = false;
+    $("readyTitle").textContent = "LEVEL " + level;
+    $("route").textContent = world.biomes.map(bm => bm.name).join("  →  ");
+    $("kmh").textContent = Math.round(world.baseSpeed * 3.6) + " km/h";
+    const d = diffLabel(level);
+    $("diff").textContent = d;
+    $("diff").className = "chip" + (d === "Easy" || d === "Normal" ? "" : " hot");
+    const offer = BALLS.find(bl => !save.balls.includes(bl.id) && bl.how.t !== "level" && hashStr(bl.id + level) % 3 === 0)
+      || BALLS.find(bl => !save.balls.includes(bl.id) && bl.how.t !== "level");
+    $("tryBtn").hidden = !offer;
+    if (offer) { $("tryName").textContent = offer.name; $("tryBtn").dataset.id = offer.id; }
+    updateHud();
+    showScreen("ready");
+  }
+
+  function begin() {
+    state = "playing"; stateAt = performance.now();
+    b.running = true;
+    showScreen("none");
+    showToast(world.biomes[0].name);
+  }
+
+  function pauseGame() {
+    if (state !== "playing" && state !== "ready") return;
+    prevState = state; state = "paused";
+    showScreen("pause");
+  }
+  function resumeGame() {
+    state = prevState;
+    showScreen(state === "ready" ? "ready" : "none");
+  }
+
+  function updateHud() {
+    $("lvl").textContent = "LEVEL " + level;
+    $("runCoins").textContent = runCoins;
+    $("fill").style.width = (clamp(b.z / world.finishLine, 0, 1) * 100).toFixed(1) + "%";
+    $("speed").textContent = Math.round((state === "playing" ? b.vz : speedAt(b.z)) * 3.6) + " KM/H";
+  }
+  function showToast(name) {
+    $("toastName").textContent = name.toUpperCase();
+    $("toast").classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $("toast").classList.remove("show"), 2200);
+  }
+
+  // ---------- death, revive, fail
+  function die(hit) {
+    if (b.dead) return;
+    b.dead = true; b.running = false;
+    if (hit) { b.vx = 0; b.vy = 4; b.vz = -5; } else { b.vz *= 0.3; }
+    SFX.crash(); buzz(90); shake = 0.6;
+    const bc = lc(SKIN_COLOR[trialSkin || save.ball] || 0xff4f9a);
+    burst(ballW.clone(), 40, k => (k % 3 ? [bc.r, bc.g, bc.b] : [1, 1, 1]), 7, 0.9, 9);
+    state = "revive"; stateAt = performance.now();
+    if (revived) { setTimeout(finalizeFail, 700); return; }
+    setTimeout(() => { if (state === "revive") openRevive(); }, 450);
+  }
+  function openRevive() {
+    showScreen("revive");
+    let left = 5;
+    const arc = $("ringArc");
+    arc.style.transition = "none"; arc.style.strokeDashoffset = "0";
+    void arc.getBoundingClientRect();
+    arc.style.transition = "stroke-dashoffset 5s linear"; arc.style.strokeDashoffset = "289";
+    $("ringNum").textContent = left;
+    clearInterval(reviveTimer);
+    reviveTimer = setInterval(() => {
+      left--; $("ringNum").textContent = Math.max(left, 0);
+      if (left <= 0) { clearInterval(reviveTimer); finalizeFail(); }
+    }, 1000);
+  }
+  function finalizeFail() {
+    if (state !== "revive") return;
+    clearInterval(reviveTimer);
+    state = "failed"; stateAt = performance.now();
+    failsHere++;
+    lastReward = runCoins;
+    addCoins(lastReward);
+    $("failCoins").textContent = "+" + lastReward;
+    $("skipBtn").hidden = failsHere < 2;
+    showScreen("failed");
+  }
+  function doRevive() {
+    revived = true;
+    if (b.fallen) { b.z = b.fallWall + R + 1.2; b.fallen = false; b.fallWall = Infinity; }
+    const g = world.gaps.find(gp => b.z > gp[0] - 1 && b.z < gp[1] + 0.5);
+    if (g) b.z = g[1] + 1.2;
+    for (const bx of world.boxes) if (Math.abs(bx.z - b.z) < bx.hz + 1.2) b.z = Math.max(b.z, bx.z + bx.hz + R + 0.4);
+    Object.assign(b, { y: R, vx: 0, vy: 0, vz: 0, x: laneX(b.lane), dead: false, running: true, invuln: simT + 2.2 });
+    state = "playing"; stateAt = performance.now();
+    showScreen("none");
+  }
+
+  // ---------- complete
+  function complete() {
+    b.running = false;
+    state = "complete"; stateAt = performance.now();
+    const ratio = world.totalCoins ? runCoins / world.totalCoins : 1;
+    const stars = 1 + (ratio >= 0.5 ? 1 : 0) + (ratio >= 0.85 ? 1 : 0);
+    lastReward = runCoins + BONUS;
+    addCoins(lastReward);
+    save.stars[level] = Math.max(save.stars[level] || 0, stars);
+    const wasMax = save.maxLevel;
+    save.maxLevel = Math.max(save.maxLevel, level + 1);
+    const unlocked = checkUnlocks();
+    persist();
+    SFX.win(); buzz(40);
+    for (let k = 0; k < 140; k++) {
+      hsl.setHSL(Math.random(), 1, 0.6);
+      const c = [hsl.r, hsl.g, hsl.b];
+      emit(ballW.x + (Math.random() - 0.5) * 6, ballW.y + 1, ballW.z + Math.random() * 3, (Math.random() - 0.5) * 8, 6 + Math.random() * 8, (Math.random() - 0.5) * 8, c[0], c[1], c[2], 1.6 + Math.random(), 9);
+    }
+    $("stars").innerHTML = [0, 1, 2].map(i => starSvg(i < stars)).join("");
+    $("winCoins").textContent = "+" + lastReward;
+    $("tripleBtn").hidden = false;
+    $("unlockNote").hidden = !unlocked.length;
+    $("unlockNote").textContent = unlocked.length ? "Unlocked: " + unlocked.join(", ") : "";
+    if (save.maxLevel > wasMax && worldOf(save.maxLevel) !== worldOf(wasMax) && save.maxLevel <= MAP_LEVELS) {
+      $("unlockNote").hidden = false;
+      $("unlockNote").textContent = `New world: ${BIOMES[worldOf(save.maxLevel)].name}!` + (unlocked.length ? "  ·  " + unlocked.join(", ") : "");
+    }
+    setTimeout(() => { if (state === "complete") showScreen("complete"); }, 700);
+  }
+  function nextLevel() {
+    save.completions++; persist();
+    const n = level + 1;
+    if (save.completions % 3 === 0 && !tripleUsed) showAd("interstitial", () => startLevel(n));
+    else startLevel(n);
+  }
+  function checkUnlocks() {
+    const names = [];
+    for (const it of BALLS) if (it.how.t === "level" && save.maxLevel > it.how.n && !save.balls.includes(it.id)) { save.balls.push(it.id); names.push(it.name + " ball"); }
+    for (const it of TRAILS) if (it.how.t === "level" && save.maxLevel > it.how.n && !save.trails.includes(it.id)) { save.trails.push(it.id); names.push(it.name + " trail"); }
+    return names;
+  }
+
+  // ---------- test ads
+  function showAd(kind, onDone) {
+    adOpen = true;
+    const el = $("ad"), btn = $("adCount"), fill = $("adFill");
+    el.hidden = false;
+    $("adKind").textContent = kind === "rewarded" ? "Rewarded video" : "Interstitial";
+    $("adNote").textContent = kind === "rewarded" ? "Watch to the end to get your reward" : "Shown between levels";
+    let n = kind === "rewarded" ? 5 : 3;
+    btn.disabled = true; btn.textContent = n;
+    fill.style.transition = "none"; fill.style.width = "0%";
+    void fill.getBoundingClientRect();
+    fill.style.transition = `width ${n}s linear`; fill.style.width = "100%";
+    const iv = setInterval(() => {
+      n--;
+      if (n > 0) { btn.textContent = n; return; }
+      clearInterval(iv);
+      btn.disabled = false; btn.textContent = "✕";
+      btn.setAttribute("aria-label", "Close ad");
+    }, 1000);
+    btn.onclick = () => {
+      if (btn.disabled) return;
+      el.hidden = true; adOpen = false; btn.onclick = null;
+      if (kind === "rewarded") SFX.reward();
+      onDone();
+    };
+  }
+
+  // ---------- map
+  function renderMap() {
+    updateCoins();
+    const list = $("mapList");
+    list.innerHTML = "";
+    let curEl = null;
+    for (let wi = 0; wi < MAP_LEVELS / LEVELS_PER_WORLD; wi++) {
+      const bm = BIOMES[wi % BIOMES.length], a = wi * LEVELS_PER_WORLD + 1, z = a + LEVELS_PER_WORLD - 1;
+      const card = document.createElement("div");
+      card.className = "world";
+      card.style.background = `linear-gradient(160deg, ${hexStr(bm.skyTop)}, ${hexStr(bm.obstacle)})`;
+      let starsGot = 0;
+      for (let l = a; l <= z; l++) starsGot += save.stars[l] || 0;
+      card.innerHTML = `<header><h3>World ${wi + 1} · ${bm.name}</h3><span>${starsGot}/30 ★</span></header><div class="nodes"></div>`;
+      const nodes = card.querySelector(".nodes");
+      for (let l = a; l <= z; l++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const st = save.stars[l] || 0, open = l <= save.maxLevel;
+        btn.className = "node" + (!open ? " lock" : l === save.maxLevel ? " cur" : "");
+        btn.setAttribute("aria-label", open ? `Level ${l}, ${st} stars` : `Level ${l}, locked`);
+        btn.innerHTML = open ? `${l}<span class="st">${[0, 1, 2].map(i => starSvg(i < st)).join("")}</span>` : lockSvg;
+        if (open) btn.addEventListener("click", () => { SFX.click(); startLevel(l); });
+        else btn.disabled = true;
+        nodes.appendChild(btn);
+        if (l === save.maxLevel) curEl = btn;
+      }
+      if (save.maxLevel < a) {
+        const veil = document.createElement("div");
+        veil.className = "veil";
+        veil.textContent = `Reach level ${a}`;
+        card.appendChild(veil);
+      }
+      list.appendChild(card);
+    }
+    const more = document.createElement("p");
+    more.className = "note";
+    more.textContent = "More worlds coming soon";
+    list.appendChild(more);
+    requestAnimationFrame(() => curEl && curEl.scrollIntoView({ block: "center" }));
+  }
+
+  // ---------- shop
+  let shopTab = "balls";
+  $("tabBalls").addEventListener("click", () => { shopTab = "balls"; renderShop(); });
+  $("tabTrails").addEventListener("click", () => { shopTab = "trails"; renderShop(); });
+  function renderShop() {
+    updateCoins();
+    $("tabBalls").setAttribute("aria-selected", shopTab === "balls");
+    $("tabTrails").setAttribute("aria-selected", shopTab === "trails");
+    const items = shopTab === "balls" ? BALLS : TRAILS;
+    const owned = shopTab === "balls" ? save.balls : save.trails;
+    const eq = shopTab === "balls" ? save.ball : save.trail;
+    const grid = $("shopGrid");
+    grid.innerHTML = "";
+    for (const it of items) {
+      const has = owned.includes(it.id), on = eq === it.id;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "item" + (on ? " eq" : "") + (has ? "" : " locked");
+      const pic = shopTab === "balls" ? `<img alt="" src="${ballThumb(it.id)}">` : `<span class="sw" style="background:${it.sw}"></span>`;
+      let act;
+      if (on) act = `<span class="act ok">Equipped</span>`;
+      else if (has) act = `<span class="act">Equip</span>`;
+      else if (it.how.t === "coins") act = `<span class="act buy"><b class="gem"></b>${it.how.n.toLocaleString()}</span>`;
+      else if (it.how.t === "ads") act = `<span class="act ad">${playSvg}AD ${save.adProgress[shopTab + it.id] || 0}/${it.how.n}</span>`;
+      else if (it.how.t === "level") act = `<span class="act">Level ${it.how.n}</span>`;
+      else if (it.how.t === "daily") act = `<span class="act">Day 7</span>`;
+      else act = `<span class="act">Spin prize</span>`;
+      btn.innerHTML = `${pic}<span class="nm">${it.name}</span>${act}`;
+      btn.addEventListener("click", () => shopTap(it, has));
+      grid.appendChild(btn);
+    }
+  }
+  function equipItem(kind, id) {
+    if (kind === "balls") { save.ball = id; ballMesh.material = skinMaterial(id); }
+    else save.trail = id;
+    persist();
+  }
+  function ownItem(kind, id) {
+    const list = kind === "balls" ? save.balls : save.trails;
+    if (!list.includes(id)) list.push(id);
+    persist();
+  }
+  function shopTap(it, has) {
+    const kind = shopTab;
+    if (has) { SFX.click(); equipItem(kind, it.id); renderShop(); return; }
+    const h = it.how;
+    if (h.t === "coins") {
+      if (save.coins < h.n) { snack(`You need ${(h.n - save.coins).toLocaleString()} more coins`); return; }
+      addCoins(-h.n); ownItem(kind, it.id); equipItem(kind, it.id); SFX.reward(); snack(`${it.name} unlocked!`); renderShop();
+    } else if (h.t === "ads") {
+      showAd("rewarded", () => {
+        const key = kind + it.id;
+        save.adProgress[key] = (save.adProgress[key] || 0) + 1;
+        if (save.adProgress[key] >= h.n) { ownItem(kind, it.id); equipItem(kind, it.id); snack(`${it.name} unlocked!`); }
+        else snack(`${save.adProgress[key]}/${h.n} ads watched`);
+        persist(); renderShop();
+      });
+    } else if (h.t === "level") snack(`Finish level ${h.n} to unlock`);
+    else if (h.t === "daily") snack("Claim the day 7 daily reward");
+    else snack("Win it on the Lucky Spin");
+  }
+  function freeCoins() { showAd("rewarded", () => { addCoins(100); snack("+100 coins"); }); }
+  $("shopFree").addEventListener("click", freeCoins);
+  $("homeFree").addEventListener("click", freeCoins);
+
+  // ---------- daily
+  function dailyStatus() {
+    if (save.daily.last === today()) return { claimed: true, day: save.daily.streak };
+    return { claimed: false, day: save.daily.last === yesterday() ? save.daily.streak % 7 : 0 };
+  }
+  function renderDaily() {
+    updateCoins();
+    const st = dailyStatus();
+    const box = $("days");
+    box.innerHTML = "";
+    DAILY.forEach((r, i) => {
+      const el = document.createElement("div");
+      const done = st.claimed ? (st.day === 0 ? true : i < st.day) : i < st.day;
+      el.className = "day" + (i === 6 ? " big" : "") + (!st.claimed && i === st.day ? " today" : "") + (done ? " done" : "");
+      el.innerHTML = `Day ${i + 1}<b>${typeof r === "number" ? `<span class="gem"></span>${r}` : `<img alt="" src="${ballThumb("smile")}">`}</b>`;
+      box.appendChild(el);
+    });
+    $("claim1").hidden = $("claim2").hidden = st.claimed;
+    $("dailyNote").hidden = !st.claimed;
+  }
+  function claimDaily(mult) {
+    const st = dailyStatus();
+    if (st.claimed) return;
+    const r = DAILY[st.day];
+    if (typeof r === "number") { addCoins(r * mult); snack(`+${r * mult} coins`); }
+    else if (!save.balls.includes("smile")) { ownItem("balls", "smile"); snack("Smiley ball unlocked!"); }
+    else { addCoins(500 * mult); snack(`+${500 * mult} coins`); }
+    save.daily = { last: today(), streak: (st.day + 1) % 7 };
+    persist(); SFX.reward(); renderDaily();
+  }
+  $("claim1").addEventListener("click", () => claimDaily(1));
+  $("claim2").addEventListener("click", () => showAd("rewarded", () => claimDaily(2)));
+
+  // ---------- spin wheel
+  let wheelRot = 0, spinning = false;
+  function drawWheel() {
+    const c = $("wheel"), g = c.getContext("2d"), n = PRIZES.length, R0 = 290;
+    g.clearRect(0, 0, 600, 600);
+    g.save(); g.translate(300, 300);
+    PRIZES.forEach((p, i) => {
+      const a0 = -Math.PI / 2 + i * 2 * Math.PI / n, a1 = a0 + 2 * Math.PI / n;
+      g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R0, a0, a1); g.closePath();
+      g.fillStyle = p.col; g.fill();
+      g.strokeStyle = "#fff"; g.lineWidth = 6; g.stroke();
+      g.save(); g.rotate(a0 + Math.PI / n);
+      g.fillStyle = "#fff"; g.font = "44px 'Lilita One', sans-serif"; g.textAlign = "right"; g.textBaseline = "middle";
+      g.shadowColor = "rgba(0,0,0,0.3)"; g.shadowOffsetY = 3;
+      g.fillText(p.c ? String(p.c) : p.label, R0 - 26, 0);
+      g.restore();
+    });
+    g.beginPath(); g.arc(0, 0, R0, 0, Math.PI * 2); g.strokeStyle = "#1d1640"; g.lineWidth = 10; g.stroke();
+    g.restore();
+  }
+  function renderSpin() {
+    updateCoins();
+    drawWheel();
+    $("spinFree").hidden = save.spinFree === today();
+  }
+  function doSpin(free) {
+    if (spinning) return;
+    spinning = true;
+    if (free) { save.spinFree = today(); persist(); $("spinFree").hidden = true; }
+    const total = PRIZES.reduce((s, p) => s + p.w, 0);
+    let r = Math.random() * total, idx = 0;
+    for (let i = 0; i < PRIZES.length; i++) { r -= PRIZES[i].w; if (r <= 0) { idx = i; break; } }
+    const seg = 360 / PRIZES.length;
+    const target = (360 - (idx * seg + seg / 2)) % 360;
+    wheelRot += 360 * 5 + ((target - (wheelRot % 360)) + 360) % 360;
+    $("wheel").style.transform = `rotate(${wheelRot}deg)`;
+    for (let k = 0; k < 8; k++) tone(500 + k * 60, 520 + k * 60, 0.04, "square", 0.02, k * 0.35);
+    setTimeout(() => {
+      spinning = false;
+      const p = PRIZES[idx];
+      if (p.c) { addCoins(p.c); snack(`You won ${p.c} coins!`); }
+      else if (p.ball) { if (save.balls.includes(p.ball)) { addCoins(300); snack("You won 300 coins!"); } else { ownItem("balls", p.ball); snack("You won the Neon Grid ball!"); } }
+      else if (p.trail) { if (save.trails.includes(p.trail)) { addCoins(300); snack("You won 300 coins!"); } else { ownItem("trails", p.trail); snack("You won the Sparkle trail!"); } }
+      SFX.reward();
+    }, 4100);
+  }
+  $("spinFree").addEventListener("click", () => doSpin(true));
+  $("spinAd").addEventListener("click", () => { if (!spinning) showAd("rewarded", () => doSpin(false)); });
+
+  // ---------- settings
+  let resetArmed = false;
+  function renderSettings() {
+    updateCoins();
+    $("sndT").setAttribute("aria-pressed", save.sound); $("sndT").textContent = save.sound ? "On" : "Off";
+    $("vibT").setAttribute("aria-pressed", save.vibe); $("vibT").textContent = save.vibe ? "On" : "Off";
+    resetArmed = false; $("resetT").textContent = "Reset"; $("resetT").classList.remove("danger");
+  }
+  $("sndT").addEventListener("click", () => { save.sound = !save.sound; persist(); renderSettings(); });
+  $("vibT").addEventListener("click", () => { save.vibe = !save.vibe; persist(); renderSettings(); });
+  $("resetT").addEventListener("click", () => {
+    if (!resetArmed) { resetArmed = true; $("resetT").textContent = "Tap again"; $("resetT").classList.add("danger"); return; }
+    save = freshSave(); persist(); snack("Progress reset"); goHome();
+  });
+
+  // ---------- game buttons
+  $("playBtn").addEventListener("click", () => { SFX.click(); startLevel(save.maxLevel); });
+  $("pauseBtn").addEventListener("click", () => { SFX.click(); pauseGame(); });
+  $("resumeBtn").addEventListener("click", () => { SFX.click(); resumeGame(); });
+  $("restartBtn").addEventListener("click", () => { SFX.click(); startLevel(level); });
+  $("pauseHome").addEventListener("click", () => go("home"));
+  $("reviveBtn").addEventListener("click", () => { clearInterval(reviveTimer); showAd("rewarded", doRevive); });
+  $("reviveNo").addEventListener("click", () => { SFX.click(); finalizeFail(); });
+  $("retryBtn").addEventListener("click", () => { SFX.click(); startLevel(level); });
+  $("skipBtn").addEventListener("click", () => showAd("rewarded", () => {
+    save.maxLevel = Math.max(save.maxLevel, level + 1); checkUnlocks(); persist(); startLevel(level + 1);
+  }));
+  $("failHome").addEventListener("click", () => go("home"));
+  $("tripleBtn").addEventListener("click", () => showAd("rewarded", () => {
+    tripleUsed = true; addCoins(lastReward * 2);
+    $("winCoins").textContent = "+" + lastReward * 3; $("tripleBtn").hidden = true;
+  }));
+  $("nextBtn").addEventListener("click", () => { SFX.click(); nextLevel(); });
+  $("winHome").addEventListener("click", () => { save.completions++; persist(); go("home"); });
+  $("tryBtn").addEventListener("click", () => {
+    const id = $("tryBtn").dataset.id;
+    showAd("rewarded", () => { trialSkin = id; ballMesh.material = skinMaterial(id); $("tryBtn").hidden = true; snack("Trying it for this run!"); });
+  });
+
+  // ================================================================ simulation (track space)
+  const gapAt = z => world.gaps.find(g => z > g[0] + 0.15 && z < g[1] - 0.15);
+  function hitBox(bx) {
+    const cx = clamp(b.x, bx.x - bx.hx, bx.x + bx.hx);
+    const cy = clamp(b.y, bx.y - bx.hy, bx.y + bx.hy);
+    const cz = clamp(b.z, bx.z - bx.hz, bx.z + bx.hz);
+    const dx = b.x - cx, dy = b.y - cy, dz = b.z - cz;
+    return dx * dx + dy * dy + dz * dz < (R * 0.85) ** 2;
+  }
+  const mv = new THREE.Vector3(), cw = new THREE.Vector3();
+  function step(dt) {
+    simT += dt;
+    for (const m of world.movers) {
+      const wave = Math.sin(simT * m.speed + m.phase);
+      if (m.axis === "y") m.bx.y = m.base + (wave * 0.5 + 0.5) * m.amp;
+      else m.bx.x = wave * m.amp;
+      m.m.position.copy(mv.set(m.bx.x, m.bx.y, 0).applyQuaternion(m.Q).add(m.P));
+    }
+    for (const s of world.sweepers) { s.angle += s.speed * dt; s.spinner.rotation.y = s.angle; }
+    if (state !== "playing" && state !== "revive" && state !== "failed" && state !== "complete") return;
+
+    if (b.running) {
+      b.vz = speedAt(b.z);
+      const laneSpeed = 14 + b.vz * 0.4;
+      b.vx = clamp((laneX(b.lane) - b.x) / dt, -laneSpeed, laneSpeed);
+      if (simT - b.jumpReq <= BUFFER && simT - b.lastG <= COYOTE && b.vy <= 0.5) {
+        b.vy = JUMP_V; b.jumpReq = -1e9; b.lastG = -1e9; SFX.jump();
+      }
+    } else if (!b.dead || b.y <= R + 1e-3) {
+      b.vx = toward(b.vx, 0, 18 * dt);
+      b.vz = toward(b.vz, 0, 18 * dt);
+    }
+    b.vy -= G * dt;
+    b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+
+    const gap = gapAt(b.z);
+    if (b.fallen) {
+      b.z = Math.min(b.z, b.fallWall);
+    } else if (gap) {
+      if (b.y < R - 0.3) { b.fallen = true; b.fallWall = gap[1] - R; if (!b.dead) die(false); }
+    } else if (b.y < R) {
+      if (b.airborne && b.vy < -3) b.squash = 1;
+      b.y = R;
+      b.vy = b.dead && b.vy < -3 ? -b.vy * 0.3 : 0;
+    }
+    const grounded = !b.fallen && !gap && b.y <= R + 1e-3;
+    if (grounded) b.lastG = simT;
+    b.airborne = !grounded;
+
+    if (b.running && simT > b.invuln) {
+      for (const bx of world.boxes) if (Math.abs(bx.z - b.z) < bx.hz + 1 && hitBox(bx)) { die(true); break; }
+    }
+    if (b.running && simT > b.invuln) {
+      for (const s of world.sweepers) {
+        if (Math.abs(s.z - b.z) > s.r + 1) continue;
+        const dx = b.x, dz = b.z - s.z;
+        let hit = false;
+        if (b.y - R < 0.5) {
+          const ux = Math.cos(s.angle), uz = -Math.sin(s.angle);
+          const proj = clamp(dx * ux + dz * uz, -s.r, s.r);
+          const px = dx - ux * proj, pz = dz - uz * proj;
+          hit = px * px + pz * pz < (0.15 + R * 0.8) ** 2;
+        }
+        if (!hit && b.y - R < 0.7) hit = dx * dx + dz * dz < (0.25 + R * 0.8) ** 2;
+        if (hit) { die(true); break; }
+      }
+    }
+    if (b.running) {
+      for (const c of world.coins) {
+        if (c.alive && Math.abs(c.z - b.z) < 0.85 && Math.abs(c.x - b.x) < 0.85 && Math.abs(c.y - b.y) < 0.85) {
+          c.alive = false; c.obj.visible = false; runCoins++;
+          SFX.coin();
+          toWorld(c.x, c.y, c.z, cw);
+          burst(cw, 8, () => [1, 0.8, 0.25], 3.5, 0.45, 2);
+        }
+      }
+      if (b.z >= world.finishLine) complete();
+      const r = clamp(Math.floor(b.z / world.regionLen), 0, world.biomes.length - 1);
+      if (r !== region) { region = r; showToast(world.biomes[r].name); }
+    }
+    if (b.y < -40) { b.y = -40; b.vy = 0; }
+    b.squash = Math.max(0, b.squash - dt * 6);
+  }
+
+  // ================================================================ biome blending
+  const cTop = new THREE.Color(), cBot = new THREE.Color(), cFog = new THREE.Color(), cGround = new THREE.Color(), cTmp = new THREE.Color();
+  function applyBiome(s) {
+    const bs = world.biomes;
+    cTop.setHex(bs[0].skyTop); cBot.setHex(bs[0].skyBot); cFog.setHex(bs[0].fog); cGround.setHex(bs[0].ground);
+    for (let k = 1; k < bs.length; k++) {
+      const t = smooth(k * world.regionLen - 30, k * world.regionLen + 30, s);
+      if (t <= 0) break;
+      cTop.lerp(cTmp.setHex(bs[k].skyTop), t);
+      cBot.lerp(cTmp.setHex(bs[k].skyBot), t);
+      cFog.lerp(cTmp.setHex(bs[k].fog), t);
+      cGround.lerp(cTmp.setHex(bs[k].ground), t);
+    }
+    skyMat.uniforms.top.value.copy(cTop);        // sky shader writes sRGB directly
+    skyMat.uniforms.bottom.value.copy(cBot);
+    scene.fog.color.copy(cFog).convertSRGBToLinear();
+    groundMat.color.copy(cGround).convertSRGBToLinear();
+    hemi.color.copy(cTop).lerp(cTmp.setHex(0xffffff), 0.6).convertSRGBToLinear();
+    hemi.groundColor.copy(cGround).convertSRGBToLinear();
+    stage.style.background = "#" + cBot.getHexString();
+  }
+
+  // ================================================================ camera + render
+  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), camUp = new THREE.Vector3(0, 1, 0);
+  const upTarget = new THREE.Vector3(), qTmp = new THREE.Quaternion(), ballW = new THREE.Vector3(), dq = new THREE.Quaternion(), axis = new THREE.Vector3();
+  let baseFov = 60;
+
+  function cameraTargets() {
+    const fx = b.x * 0.45, fy = Math.max(b.y - R, -1) * 0.5;
+    toWorld(fx, fy + 6.5, b.z - 8, camPos, qTmp);
+    toWorld(fx, fy + 0.5, b.z + 8, camLook, qTmp);
+    frameAt(b.z, _P, qTmp);
+    upTarget.set(0, 1, 0).applyQuaternion(qTmp);
+  }
+  function snapCamera() {
+    cameraTargets();
+    camera.position.copy(camPos);
+    camUp.copy(upTarget);
+    camera.up.copy(camUp);
+    camera.lookAt(camLook);
+  }
+
+  let trailT = 0;
+  function render(dt) {
+    frameAt(b.z, _P, qTmp);
+    ballW.set(b.x, b.y, 0).applyQuaternion(qTmp).add(_P);
+    const sq = b.squash;
+    ball.position.copy(ballW).addScaledVector(_v.set(0, 1, 0).applyQuaternion(qTmp), -0.14 * sq);
+    ball.quaternion.copy(qTmp);
+    ball.scale.set(1 + 0.22 * sq, 1 - 0.28 * sq, 1 + 0.22 * sq);
+    const sp = Math.hypot(b.vx, b.vz);
+    if (sp > 0.01) ballMesh.quaternion.premultiply(dq.setFromAxisAngle(axis.set(b.vz, 0, -b.vx).normalize(), (sp * dt) / R));
+    if (state === "menu") ballMesh.rotateY(dt * 0.8);
+    ballMesh.visible = !(b.running && simT < b.invuln && Math.floor(simT * 12) % 2 === 0);
+
+    // Trail
+    const trail = save.trail;
+    if (b.running && trail !== "none" && TRAIL_COLOR[trail]) {
+      trailT += dt;
+      const fn = TRAIL_COLOR[trail];
+      if (Math.random() < 0.7) {
+        const [r, g, bb] = fn(trailT);
+        emit(ballW.x + (Math.random() - 0.5) * 0.3, ballW.y + (Math.random() - 0.5) * 0.3, ballW.z + (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.5, Math.random() * 0.4, (Math.random() - 0.5) * 0.5, r * 0.8, g * 0.8, bb * 0.8, 0.32, trail === "fire" ? -2 : 0);
+      }
+    }
+    updateParticles(dt);
+
+    for (const c of world.coins) if (c.alive && Math.abs(c.z - b.z) < 90) c.spin.rotation.y += 3 * dt;
+
+    if (state === "menu") {
+      orbit += dt * 0.18;
+      const r = 6.2;
+      camera.up.set(0, 1, 0);
+      camera.position.lerp(_v.set(ballW.x + Math.sin(orbit) * r, ballW.y + 2.4, ballW.z - Math.cos(orbit) * r), 1 - Math.exp(-3 * dt));
+      camera.lookAt(ballW.x, ballW.y + 0.9, ballW.z);
+      camUp.set(0, 1, 0);
+    } else {
+      cameraTargets();
+      const k = 1 - Math.exp(-10 * dt);
+      camera.position.lerp(camPos, k);
+      camUp.lerp(upTarget, k).normalize();
+      camera.up.copy(camUp);
+      camera.lookAt(camLook);
+      if (shake > 0) {
+        shake = Math.max(0, shake - dt * 1.6);
+        camera.position.add(_v.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(shake * 0.6));
+      }
+    }
+    const wantFov = baseFov + (state === "playing" ? clamp((b.vz - 12) * 0.55, 0, 10) : 0);
+    if (Math.abs(camera.fov - wantFov) > 0.05) { camera.fov = lerp(camera.fov, wantFov, 1 - Math.exp(-4 * dt)); camera.updateProjectionMatrix(); }
+
+    sky.position.copy(camera.position);
+    ground.position.set(ballW.x, world.groundY, ballW.z);
+    sun.position.set(ballW.x + 18, ballW.y + 40, ballW.z - 12);
+    sun.target.position.copy(ballW);
+
+    applyBiome(b.z);
+    if (state !== "menu") updateHud();
+    renderer.render(scene, camera);
+  }
+
+  function resize() {
+    const h = wrap.clientHeight, w = Math.min(wrap.clientWidth, Math.round(h * 0.62));
+    stage.style.width = w + "px";
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    const vfov = (2 * Math.atan(Math.tan((50 * Math.PI) / 360) / camera.aspect) * 180) / Math.PI;
+    baseFov = clamp(vfov, 55, 78);
+    camera.fov = baseFov;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+
+  // ================================================================ input
+  let tracking = false, swiped = false, sx = 0, sy = 0, st = 0;
+  const playable = () => !adOpen && (state === "ready" || state === "playing");
+  stage.addEventListener("pointerdown", e => {
+    if (!playable() || e.target.closest("button, .card")) return;
+    tracking = true; swiped = false; sx = e.clientX; sy = e.clientY; st = performance.now();
+    try { stage.setPointerCapture(e.pointerId); } catch {}
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!tracking || swiped) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    const thr = Math.max(24, Math.min(stage.clientWidth, stage.clientHeight) * 0.06);
+    if (dx * dx + dy * dy < thr * thr) return;
+    swiped = true;
+    onSwipe(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy < 0 ? "up" : "down"));
+  });
+  stage.addEventListener("pointerup", () => {
+    if (!tracking) return;
+    tracking = false;
+    if (!swiped && performance.now() - st <= 350 && state === "ready") begin();
+  });
+  stage.addEventListener("pointercancel", () => { tracking = false; });
+
+  function onSwipe(dir) {
+    if (state === "ready") begin();
+    if (state !== "playing" || !b.running) return;
+    if (dir === "left") b.lane = Math.max(0, b.lane - 1);
+    else if (dir === "right") b.lane = Math.min(LANES - 1, b.lane + 1);
+    else if (dir === "up") b.jumpReq = simT;
+  }
+  window.addEventListener("keydown", e => {
+    if (e.repeat || adOpen) return;
+    const k = e.key;
+    if (k === "Escape" || k === "p" || k === "P") { if (state === "paused") resumeGame(); else pauseGame(); return; }
+    if (!playable() || e.target.closest?.("button")) return;
+    if (k === "ArrowLeft" || k === "a" || k === "A") onSwipe("left");
+    else if (k === "ArrowRight" || k === "d" || k === "D") onSwipe("right");
+    else if (k === "ArrowUp" || k === " " || k === "w" || k === "W") onSwipe("up");
+    else if (k === "Enter" && state === "ready") begin();
+    else return;
+    e.preventDefault();
+  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden && state === "playing") pauseGame(); });
+
+  // ================================================================ boot
+  resize();
+  goHome();
+  let lastT = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, Math.max(0, (now - lastT) / 1000));
+    lastT = now;
+    if (state !== "paused" && !adOpen) {
+      const n = Math.max(1, Math.ceil(dt / (1 / 120)));
+      for (let i = 0; i < n; i++) step(dt / n);
+    }
+    render(state === "paused" || adOpen ? 0 : dt);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
